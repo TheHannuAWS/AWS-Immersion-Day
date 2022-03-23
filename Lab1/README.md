@@ -1,89 +1,115 @@
-# Lab1: EKS for CNF engineer (Environment creation)
+# Lab1: EKS for CNF engineer (AWS environment creation)
 
-### Please keep in mind..
-* You only have to use 'us-west-2' Region not the one closest to you. (make it sure, you should be with "Oregon" - please refer to below console view).
-* As of today (11/28/2021), if we run infra cloudformation, then EKS cluster is created with K8s 1.21 version. 
+### AWS Region
+* Only use 'us-west-2' AWS Region. (See console screenshot below)
+* As of today (22 March 2022) EKS cluster is created with K8s 1.21 version. 
 
-## 1. Please download CFN template for this Lab
+## 1. Please download CFN template for this lab accessible locally
 *to download these from GitHub at once, please select "Code" on the top left corner of menu, and then click green "Code" menu and then select "Download Zip" file.*
-* CFN repo1: https://github.com/crosscom/AWS-Immersion-Day/blob/main/Lab1/template/aws-immersion-infra.yaml
-    * This creates VPC, public/private subnets, subnet route tables, IGW, NAT-GW, Security Groups, EKS Cluster and Bastion Instance
-* CFN repo2: https://github.com/crosscom/AWS-Immersion-Day/blob/main/Lab1/template/amazon-eks-nodegroup-multus.yaml
+* CFN repo1: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/aws-immersion-infra.yaml
+    * This template creates VPC, public/private subnets, subnet route tables, IGW, NAT-GW, Security Groups, EKS Cluster and Bastion Host
+* CFN repo2: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/amazon-eks-nodegroup-multus.yaml
     * This creates Autoscaling group to be used for worker node group of your EKS cluster. This also creates Lambda function for multus-ready worker node group.
-* Lambda Function Zip: https://github.com/crosscom/AWS-Immersion-Day/blob/main/Lab1/template/lambda_function.zip
-    * Lambda function to be used along with CFN repo2 (worker node group stack). 
+* Lambda Function Zip: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/lambda_function.zip
+    * Lambda function to be used along with CFN repo2 (worker node group stack).
 
 ## 2. Log in to AWS Console 
-(please select Region to be "Oregon")
+(please select AWS Region as "Oregon")
 ![Console View](images/console.png)
 
-## 3. Create Environment with CloudFormation
-* Type "CloudFormation" at search service section and go to CloudFormation.
-* Create Stack -> upload a template file -> Choose file (select downloaded "aws-immersion-infra.yaml").
-* Keep default values in configuraiton of CloudFormation Template. 
-    * AvailabilityZones --> choose us-west-2a and us-west-2b (2 AZs required for EKS creation).
-    * BastionKeyPairName --> select 'ee-dfault-keypair' from dropdown menu. 
+## 3. Create Environment with CloudFormation (CFN)
+* Type "CloudFormation" at search service section and open AWS CloudFormation service (Tip: Use right mouse button - Open in New tab when opening)
+* in CFN select *Create stack*, *With new resources(standard)*
+ Click *Template is ready* (default), "Upload a template file", "Choose file" Select "aws-immersion-infra.yaml" file that you have downloaded from GitHub. Click "Next"
+* Keep default values in configuration of CloudFormation Template except following
+    * Stack name: AWS-Infra
+    * AvailabilityZones: Choose "us-west-2a" and "us-west-2b"
+    * BastionKeyPairName: Select "ee-default-keypair" from dropdown menu (Bottom of the form)
     * Click "Next"
-* There is nothing to specify in "Configure Stack options" page, so please click again "Next" at the bottom. 
-* At Review page, go bottom of the page and click checkbox for "I acknowledge that AWS...", and then click "Create stack". 
+* There is nothing to change in "Configure Stack options" page, so click again "Next" at the bottom.
+* At Review page - review the changes, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack". 
 
-
-![Landing Zone configuratoin](images/immersion-day1.png)
-
+![Landing Zone configuration](images/immersion-day1.png)
 
 ## 4. Login to Bastion Host 
-* Usually in eksworkshop or normal immersion day offered by AWS, we guide customer to experience Cloud9 (AWS IDE environment). But in this workshop, plan is to provide a general environment with your own Bastion Host EC2, where you have to install kubectl tools and other tools as needed.
-* (General)
-    * We can use *EC2 Instance Connect* to login to EC2 instance from the AWS console.
-    * EC2->Instances->"connect" (right top corner of screen). 
-    * click "connect"
+> **_NOTE:_** Building the infra (running Cloud Formation) takes a while (~10mins) feel free to look around CFN stack and services created (EC2, VPC, EKS...)
 
-* (MAC user) Log in from your laptop
-    * Let's use key pair we downloaded to access to the instance.
+* We use EC2 "Bastion host" to access the environment. On bastion host we need to install kubectl and other tools.
 
-  ````
-  chmod 600 ee-default-keypair.pem
-  ssh-add ee-default-keypair.pem
-  ssh -A ec2-user@54.208.182.244
-  ````
+Connect to host (options): 
+  * We can use *EC2 Instance Connect* to login to EC2 instance from the AWS console
+     * EC2 -> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "EC2 Instance Connect"-tab
+     * click "Connect"
 
-    * Copy AWS credentials (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY; be mindful that you have to use your own not below one, that I asked youto copy at Step 2).
+  * AWS Systems Manager (SSM)
+     * You can use "Session Manager" to connect as instance role has SSM policy and agent is automatically deployed
+     * EC2-> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "Session Manager"-tab
+     * change to ec2-user after login
+     ````
+     sudo su - ec2-user
+     ````
+    
+  * MAC user Log in from your laptop
+    * Use key pair downloaded to access to the instance. Use public IP of your instance in below
 
-  ````
-  export AWS_DEFAULT_REGION=us-west-2
-  export AWS_ACCESS_KEY_ID=ASIA..
-  export AWS_SECRET_ACCESS_KEY=4wyDA..
-  export AWS_SESSION_TOKEN=IQo...
-  ````
+   ````
+   chmod 600 ee-default-keypair.pem
+   ssh-add ee-default-keypair.pem
+   ssh -A ec2-user@<Public IP of your Bastion host>
+   ````
 
-    * Try whether AWS confidential is already configured well
+    * Export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY; Use ones you copied/stored earlier
 
+   ````
+   export AWS_DEFAULT_REGION=us-west-2
+   export AWS_ACCESS_KEY_ID=ASIA..
+   export AWS_SECRET_ACCESS_KEY=4wyDA..
+   export AWS_SESSION_TOKEN=IQo...
+   ````
+   > **_NOTE:_** In case you close the session you need to re-export above for credentials to work! (or store them to .bashrc)
+
+    * Validate AWS credentials are as desired
     ````
     aws sts get-caller-identity
     ````
 
-* (Window user) Log in from your laptop 
+  * Windows user: Log in from your laptop use WSL2 or putty
     * Please use PuTTy and refer to the guide, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html
 
-## 5. Make a Bastion Host to be a kubectl client
+    * Export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY; Use ones you copied/stored earlier
+     ````
+     export AWS_DEFAULT_REGION=us-west-2
+     export AWS_ACCESS_KEY_ID=ASIA..
+     export AWS_SECRET_ACCESS_KEY=4wyDA..
+     export AWS_SESSION_TOKEN=IQo...
+     ````
+     > **_NOTE:_** In case you close the session you need to re-export above for credentials to work! (or store them to .bashrc)
 
-* Download kubectl. 
+## 5. Install kubectl to Bastion Host
+
+* Download kubectl (arm64) and install it to path
 
   ````
-  curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
-  curl -o kubectl.sha256 https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl.sha256
-  openssl sha1 -sha256 kubectl
+  curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/arm64/kubectl
   chmod +x ./kubectl
   mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
   echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
-  kubectl --help
+  echo 'source <(kubectl completion bash)' >>~/.bashrc
+  kubectl version --short --client
   ````
 
-* Check your name of EKS cluster (from CloudFormation output or EKS console (service search -> EKS)) - you provided this name in Step3 CloudFormation creation.
+* Check name of your EKS cluster - and write it down to notepad
+   * From CloudFormation output or EKS console (service search -> EKS)
+   *  You can also use CLI to get EKS cluster name
+    ````
+    aws eks list-clusters
+    ````
 
-* Config kubeconfig with EKS CLI (*please be mindful to use your own cluster name in below instead of eks-my-first-stack), you have to check your EKS cluster name you created from the CloudFormation*)
+* Config kubeconfig with EKS CLI 
+(*Fill in your own cluster name in below, you can check your EKS cluster name you created from the CloudFormation or EKS console / CLI*)
+
   ````
-  aws eks update-kubeconfig --name=eks-my-first-stack
+  aws eks update-kubeconfig --name=<your eks cluster name>
   ````
 
 * Verify kubectl command
@@ -93,43 +119,44 @@
   kubernetes   ClusterIP   172.20.0.1   <none>        443/TCP   31m
   ````
 
-* Verify it from AWS CLI
+* Verify cluster also from AWS CLI
   ````
-  aws eks describe-cluster --name=eks-my-first-stack
+  aws eks describe-cluster --name=<your eks cluster name>
   ````
 
-## 6. Self-managed Node Group creation for Multus-reday Worker NG
-* Go to S3 and create bucket (folder/directory) with *Create bucket*.
-* Bucket name to be unique like *young-jung-immersion* (recommend to use your name or unique keyword), and then *Create bucket*.
-* Click the bucket you just created and drag & drop lambda_function.zip file (which you can find from /template directory of this GitHub). Then, click *Upload*.
-* Please memorize bucket name you create (this is required in CloudFormation)
-* Go to CloudFormation console by selecting CloudFormation from Services drop down or by search menu. 
-    * Select *Create stack*, *with new resources(standard)*.
-    * Click *Template is ready* (default), "Upload a template file", "Choose file". Select "amazon-eks-nodegroup-multus.yaml" file that you have downloaded from this GitHub. 
-    * Stack name -> ng1
-    * ClusterName -> eks-immersion (your own name)
-    * ClusterControlPlaneSecurityGroup -> "immersion-EksControlSecurityGroup-xxxx"
-    * NodeGroupName -> ng1
-    * Min/Desired/MaxSize -> 1/1/1
-    * KeyName -> ee-default-keypair
-    * VpcId -> vpc-immersion (that you created)
-    * Subnets -> privateAz1-immersion (this is for main primary K8s networking network)
-    * MultusSubnets -> multus1Az1
-    * MultusSecurityGroups -> immersion-MultusSecurityGroup
-    * LambdaS3Bucket -> the one you created (young-jung-immersion)
-    * LambdaS3Key -> lambda_function.zip
-    * There is nothing to specify in "Configure Stack options" page, so please click again "Next" at the bottom.
-    * At Review page, go bottom of the page and click checkbox for "I acknowledge that AWS...", and then click "Create stack".
+## 6. Self-managed Node Group creation for Multus-ready Worker NG
+* Open AWS S3 service and create new bucket (folder/directory) with *"Create bucket"* - orange button. Make sure to use us-west-2 (Oregon) as region
+ * Bucket name must be globally unique like *AWS-\<AccountID\>-immersion* (recommend to use AWS-account id-your_name) and then *"Create bucket"*. Write this down - you need it later.
+ * Leave other settings as defaults
+ * Click the bucket name you just created and drag & drop "lambda_function.zip" file tjere (which you can find from /template directory of this GitHub). Next, click *"Upload"*
+ * Remember to write down bucket name you created (this is required to fill in CloudFormation)
+* Go to CloudFormation console by selecting CloudFormation from Services drop down or by search menu (or use tab you have already open). 
+    * Select *Create stack*, *With new resources(standard)*
+    * Click *Template is ready* (default), "Upload a template file", "Choose file". Select "amazon-eks-nodegroup-multus.yaml" file that you have downloaded from GitHub. 
+    * Stack name: eks-workers
+    * ClusterName: Name-of-YOUR-EKS-cluster (From infra stack - if you used recommended stack name this is AWS-Infra-EKS - validate from your environment)
+    * ClusterControlPlaneSecurityGroup: AWS-Infra-EksControlSecurityGroup-xxxx
+    * NodeGroupName: gv2-multus-ng1
+    * Min/Desired/MaxSize: 1/2/3 (Leave defaults)
+    * KeyName: ee-default-keypair (dropdown)
+    * VpcId: vpc-AWS-Infra (One you created with infra stack)
+    * PrimarySubnets: privateAz1-AWS-Infra (this is for primary K8s networking network - eth0 - choose just one from Az1) 
+    * MultusSubnets: multus1Az1-AWS-Infra and multus2Az1-AWS-Infra (choose two subnets FORM *AZ1*: MultusSubnet1Az1 and MultusSubnet2Az1)
+    * MultusSecurityGroups: multus-Sg-AWS-Infra (Example: AWS-Infra-MultusSecurityGroup-xxxxxx)
+    * LambdaS3Bucket: The one you created above (Just the name of bucket example "AWS-\<accountID\>-immersion")
+    * LambdaS3Key: lambda_function.zip
+    * There is nothing to specify in "Configure Stack options" page, so please click again "Next" at the bottom
+    * At Review page - review the changes, go bottom of the page and click checkbox for "I acknowledge that AWS...", and then click "Create stack"
     
-* Once CloudFormation stack creation is completed, check *Output* part in the menu and copy the value of NodeInstanceRole (e.g. arn:aws:iam::153318889914:role/ng1-NodeInstanceRole-1C77OUUUP6686 --> this is an example, you have to use your own)
-* Go to the Bastion Host where we can run kubectl command. 
+* Once CloudFormation stack creation is completed, check *Outputs* part in the menu and copy the value of NodeInstanceRole in notepad. Example: arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-NOTTHISONE - use one from your output)
+* Log in to the Bastion Host where you can run kubectl commands 
 * Download aws-auth-cm file at Bastion Host.
 
   ````
   curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
   ````
 
-* Open aws-auth-cm.yaml file downloaded using vi or any text editor. And place above copied NodeInstanceRole value to the place of "*<ARN of instance role (not instance profile)>*", and then apply this through kubectl.
+* Open aws-auth-cm.yaml file downloaded using vi/vim or any text editor you prefer. And place above copied NodeInstanceRole value to the place of "*<ARN of instance role (not instance profile)>*", and then apply this through kubectl.
 
   ````
   kind: ConfigMap
@@ -138,7 +165,7 @@
     namespace: kube-system
   data:
     mapRoles: |
-      - rolearn: arn:aws:iam::153318889914:role/ng1-NodeInstanceRole-1C77OUUUP6686
+      - rolearn: <ARN of instance role (not instance profile)> # <- REPLACE THIS!!!
         username: system:node:{{EC2PrivateDNSName}}
         groups:
           - system:bootstrappers
@@ -148,9 +175,13 @@
   ````
   kubectl apply -f aws-auth-cm.yaml
   ````
-* Verfiy node group is created under your cluster. 
+* Verify node group is created and visible under your cluster. Also check this in EKS Service in AWS console.
  ````
- kubectl get nodes
+ kubectl get nodes -o wide
  ````
+ Nodes should be visible as STATUS "Ready" within ~minute.
 
-If all creation looks good (kubectl get nodes command shows worker node instance), then let's move to [Lab2](https://github.com/crosscom/AWS-Immersion-Day/tree/main/Lab2).
+ Validate you have multiple interfaces on your EC2 worker nodes attached - and Multus interfaces are tagged with node.k8s.amazonaws.com/no_manage "true" (in AWS console)
+
+
+If all looks good (kubectl get nodes command shows worker node instance) - move to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)
