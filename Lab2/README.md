@@ -103,7 +103,7 @@ spec:
         "gateway": "10.0.4.1"
       }
     }'
-EoF    
+EoF
 ````
 
   ````
@@ -124,7 +124,7 @@ EoF
    - name: samplepod
      command: ["/bin/bash", "-c", "trap : TERM INT; sleep infinity & wait"]
      image: <URI from ECR>:latest
-EoF    
+EoF
 ````
 > **_NOTE:_** Update image: with value from your image in ECR (URI)
 
