@@ -68,7 +68,8 @@ Connect to host (options):
    ````
    > **_NOTE:_** In case you close the session you need to re-export above for credentials to work! (or store them to .bashrc)
 
-    * Validate AWS credentials are as desired
+    * Validate AWS credentials
+
     ````
     aws sts get-caller-identity
     ````
@@ -115,11 +116,15 @@ Connect to host (options):
 * Verify kubectl command
   ````
   kubectl get svc
+  ````
+  Output Example:
+  ````
+  [ec2-user@ip-10-0-0-43 ~]$ kubectl get svc
   NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
   kubernetes   ClusterIP   172.20.0.1   <none>        443/TCP   31m
   ````
 
-* Verify cluster also from AWS CLI
+* Verify cluster also with AWS CLI
   ````
   aws eks describe-cluster --name=<your eks cluster name>
   ````

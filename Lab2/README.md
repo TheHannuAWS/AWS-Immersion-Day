@@ -73,73 +73,74 @@ Replace <URI from ECR> with URI you copy from your ECR repo
 mkdir k8s-environment && cd k8s-environment
 ````
 * Install multus CNI (This uses us-west-2 as default image location - below is for arm64).
-  ````
-  kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/multus/v3.7.2-eksbuild.2/aws-k8s-multus.yaml
-
-  ````
+ ````
+ kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/multus/v3.7.2-eksbuild.2/aws-k8s-multus.yaml
+ ````
 Validate that demonset started the kube-multus-xxxxx PoD(s):
 ````
-$ kubectl get pod -A
+kubectl get pod -A
 ````
 
 * Create below networkAttachmentDefinition (multus-ipvlan.yaml) and apply it to the cluster.
 
-  ````
-  cat <<EoF > multus-ipvlan.yaml
-  apiVersion: "k8s.cni.cncf.io/v1"
-  kind: NetworkAttachmentDefinition
-  metadata:
-    name: ipvlan-conf
-  spec:
-    config: '{
-        "cniVersion": "0.3.0",
-        "type": "ipvlan",
-        "master": "eth1",
-        "mode": "l2",
-        "ipam": {
-          "type": "host-local",
-          "subnet": "10.0.4.0/24",
-          "rangeStart": "10.0.4.70",
-          "rangeEnd": "10.0.4.80",
-          "gateway": "10.0.4.1"
-        }
-      }'
-  EoF    
-  ````
+````yaml
+cat <<EoF > multus-ipvlan.yaml
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: ipvlan-conf
+spec:
+  config: '{
+      "cniVersion": "0.3.0",
+      "type": "ipvlan",
+      "master": "eth1",
+      "mode": "l2",
+      "ipam": {
+        "type": "host-local",
+        "subnet": "10.0.4.0/24",
+        "rangeStart": "10.0.4.70",
+        "rangeEnd": "10.0.4.80",
+        "gateway": "10.0.4.1"
+      }
+    }'
+EoF    
+````
 
   ````
   kubectl apply -f multus-ipvlan.yaml
   ````
 
 * Deploy your docker using above network attachment. (create a file named, app-ipvlan.yaml)
-  ````
-  cat <<EoF > app-ipvlan.yaml
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: samplepod
-    annotations:
-      k8s.v1.cni.cncf.io/networks: ipvlan-conf
-  spec:
-    containers:
-    - name: samplepod
-      command: ["/bin/bash", "-c", "trap : TERM INT; sleep infinity & wait"]
-      image: <URI from ECR>:latest
-  EoF    
-  ````
+````yaml
+ cat <<EoF > app-ipvlan.yaml
+ apiVersion: v1
+ kind: Pod
+ metadata:
+   name: samplepod
+   annotations:
+     k8s.v1.cni.cncf.io/networks: ipvlan-conf
+ spec:
+   containers:
+   - name: samplepod
+     command: ["/bin/bash", "-c", "trap : TERM INT; sleep infinity & wait"]
+     image: <URI from ECR>:latest
+EoF    
+````
 > **_NOTE:_** Update image: with value from your image in ECR (URI)
 
   ````
   kubectl apply -f app-ipvlan.yaml
+  ````
+  ````
   kubectl describe pod samplepod
   ````
 * Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24)
-  ````
-  kubectl exec -it samplepod -- /bin/bash
-  ````  
-  ````
-  root@samplepod:/# ifconfig
-  ````
+````
+kubectl exec -it samplepod -- /bin/bash
+````  
+````
+root@samplepod:/# ifconfig
+````
 ### Automated Multus pod IP management on EKS / VPC
 
 Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs routable in VPC network, please refer to Automated Multus pod IP management on EKS: https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods to automate the pod IP assignment seamlessly, without any change in application code.
