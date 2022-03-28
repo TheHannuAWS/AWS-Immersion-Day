@@ -48,18 +48,18 @@ REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
 ubuntu       focal     e784f03641c9   5 days ago      65.6MB
 ````
 
-> **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598)
+> **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598) - you need it below
 
 ## 2. Upload Image to the ECR Repository
-* Create an Elastic Container Repository (ECR) in AWS Console 
-* Open "ECR" service -> Create a repository select "Get Started" orange button
-  * Visibility: Private (Default)
-  * Repository Name: my-ecr 
-    * The name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, and forward slashes) 
-   * Leave other defaults
-   * Select "Create repository" in bottom of page
-* Run below commands at Bastion host (where you created a docker image). 
-Replace <URI from ECR> with URI you copy from your ECR repo
+Run below commands at Bastion host (where you created a docker image) 
+
+* Create an Elastic Container Repository (ECR) named my-ecr in us-west-2
+  ````
+  aws ecr create-repository --repository-name my-ecr --region us-west-2
+  ````
+Note down "repositoryUri"
+
+> **_NOTE:_** Replace \<URI from ECR\> with URI of your ECR repo, and IMAGE Id from above "docker images" command.
 
 *Use your URI / Account ID and Image ID of your docker (you can retrieve all information from above docker images command and from AWS ECR console)*
 
@@ -156,7 +156,8 @@ Multus pods are using ipvlan CNI, which means that the mac-address of the pod re
 
 ## 4. Clean up environment
 1. Go to CloudFormation and "Delete" "eks-workers" stack you created. 
-2. After above is deleted also "Delete" the "AWS-Infra" stack. 
+2. After above is deleted also "Delete" the "AWS-Infra" stack.
+3. Delete and empty also S3 bucket your created. 
 
 ## What next? 
 * Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
