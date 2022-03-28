@@ -40,9 +40,9 @@
   ````
   docker images 
   ````
-Output (Example):
+Example output:
+
 ````
-[ec2-user@ip-10-0-0-43 dockerimage]$ docker images
 REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
 <none>       <none>    1da914777598   9 seconds ago   526MB <-- This your image
 ubuntu       focal     e784f03641c9   5 days ago      65.6MB
@@ -51,19 +51,28 @@ ubuntu       focal     e784f03641c9   5 days ago      65.6MB
 > **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598)
 
 ## 2. Upload Image to the ECR Repository
-* Create an Elastic Container Repository (ECR) in AWS ECR Console. "ECR" -> "Repositories"->"Create repository"
-      * Visibility: Private (Default)
-      * Repository Name: my-ecr 
-         * The name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, and forward slashes) 
-      * Leave other defaults
-      * Create repository
+* Create an Elastic Container Repository (ECR) in AWS Console 
+* Open "ECR" service -> Create a repository select "Get Started" orange button
+  * Visibility: Private (Default)
+  * Repository Name: my-ecr 
+    * The name must start with a letter and can only contain lowercase letters, numbers, hyphens, underscores, and forward slashes) 
+   * Leave other defaults
+   * Select "Create repository" in bottom of page
 * Run below commands at Bastion host (where you created a docker image). 
 Replace <URI from ECR> with URI you copy from your ECR repo
 
-*Use your Account ID and Image ID of your docker (you can retrieve all information from above docker images command and from AWS ECR console)*
+*Use your URI / Account ID and Image ID of your docker (you can retrieve all information from above docker images command and from AWS ECR console)*
+
+Login to ECR:
   ````
   aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin <URI from ECR>
+  ````
+  Tag Image:
+  ````
   docker tag <IMAGE ID you created> <URI from ECR>:latest
+  ````
+  Push Image:
+  ````
   docker push <URI from ECR>:latest
   ````
   
@@ -150,5 +159,12 @@ Multus pods are using ipvlan CNI, which means that the mac-address of the pod re
 2. After above is deleted also "Delete" the "AWS-Infra" stack. 
 
 ## What next? 
-* I highly encourage you to walk through below blog post contents. You already have done the most of parts of setup process guided in the blog. You can easily build your own functional 4G EPC Core on EKS environment within 45 min after following steps similar to this course. https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/
+* Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
+* Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
+* Update some parameter in CFN - what happens ?
 * Official AWS Multus Guide: https://github.com/aws-samples/eks-install-guide-for-multus (Includes latest updates)
+* Look additional EKS labs in [eksworksop.com](https://www.eksworkshop.com/)
+  * Especially: IAM/RBAC/IRSA related and how to work those with EKS
+* You can also walk through below blog post contents. You already have done the most of parts of setup process guided in the blog (Note that we used arm64 here) - in blog will build your own functional Open Source 4G EPC Core on EKS environment within 45 min following steps similar to this course. https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/
+
+* Go Build your CNF apps with AWS!

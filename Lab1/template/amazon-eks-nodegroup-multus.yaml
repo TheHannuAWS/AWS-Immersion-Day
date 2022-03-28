@@ -94,7 +94,7 @@ Parameters:
 
   NodeInstanceType:
     Type: String
-    Default: m6g.medium
+    Default: m6g.large
     AllowedValues:
       - m6g.medium
       - m6g.large
