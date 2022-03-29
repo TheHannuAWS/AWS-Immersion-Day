@@ -1,16 +1,16 @@
 # Lab2: EKS for CNF engineer (Application creation and private ECR repo)
 
 ## AWS Region
-* ONLY use 'us-west-2' (Oregon) AWS region during these labs.
+* ONLY use 'us-west-2' (Oregon) AWS region during these labs
 
 ## 1. Create a Docker Image 
 * Prepare docker environment (login your bastion host EC2 instance)
-  ````
+  ````bash
   sudo yum install docker -y
   sudo usermod -aG docker ${USER}
   sudo service docker start
   ````
-  Logout from Bastion and Login back.
+  Logout from Bastion and Login back and re-export credentials.
 
   > **_NOTE:_** You have to re-configure AWS Credential (copy "export AWS_..." again). 
   
@@ -19,7 +19,8 @@
   docker
   ````
 * Create a directory for Dockerfile creation.
-  ````
+  ````bash
+  cd ~
   mkdir dockerimage && cd dockerimage
   ````
 * Create a Dockerfile file (file name to be Dockerfile with below contents)
@@ -32,7 +33,7 @@
   WORKDIR /
   EoF
   ````
-* Build a Docker image.
+* Build a Docker image
   ```` 
   docker build .
   ````
@@ -54,14 +55,12 @@ ubuntu       focal     e784f03641c9   5 days ago      65.6MB
 Run below commands at Bastion host (where you created a docker image) 
 
 * Create an Elastic Container Repository (ECR) named my-ecr in us-west-2
-  ````
-  aws ecr create-repository --repository-name my-ecr --region us-west-2
-  ````
+   ````
+   aws ecr create-repository --repository-name my-ecr --region us-west-2
+   ````
 Note down "repositoryUri"
 
 > **_NOTE:_** Replace \<URI from ECR\> with URI of your ECR repo, and IMAGE Id from above "docker images" command.
-
-*Use your URI / Account ID and Image ID of your docker (you can retrieve all information from above docker images command and from AWS ECR console)*
 
 Login to ECR:
   ````
@@ -69,7 +68,7 @@ Login to ECR:
   ````
   Tag Image:
   ````
-  docker tag <IMAGE ID you created> <URI from ECR>:latest
+  docker tag <IMAGE ID> <URI from ECR>:latest
   ````
   Push Image:
   ````
@@ -77,8 +76,9 @@ Login to ECR:
   ````
   
 ## 3. Create Multus App using uploaded Docker image from the ECR
-* Create a new directory at your bastion host (under /home/ec2-user/ or other location you like)
+* Create a new directory at your bastion host (under /home/ec2-user/)
 ````
+cd ~
 mkdir k8s-environment && cd k8s-environment
 ````
 * Install multus CNI (This uses us-west-2 as default image location - below is for arm64).
@@ -119,7 +119,7 @@ EoF
   kubectl apply -f multus-ipvlan.yaml
   ````
 
-* Deploy your docker using above network attachment. (create a file named, app-ipvlan.yaml)
+* Deploy your docker using above network attachment. Create a file named, app-ipvlan.yaml
 ````yaml
  cat <<EoF > app-ipvlan.yaml
  apiVersion: v1
@@ -152,14 +152,11 @@ root@samplepod:/# ifconfig
 ````
 ### Automated Multus pod IP management on EKS / VPC
 
+> **_NOTE:_** 29-Mar-2022 below needs update for arm64 (whereabouts)
+
 Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs routable in VPC network, please refer to Automated Multus pod IP management on EKS: https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods to automate the pod IP assignment seamlessly, without any change in application code.
 
-## 4. Clean up environment
-1. Go to CloudFormation and "Delete" "eks-workers" stack you created. 
-2. After above is deleted also "Delete" the "AWS-Infra" stack.
-3. Delete and empty also S3 bucket your created. 
-
-## What next? 
+## 4. What next? 
 * Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
 * Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
 * Update some parameter in CFN - what happens ?
@@ -169,3 +166,8 @@ Multus pods are using ipvlan CNI, which means that the mac-address of the pod re
 * You can also walk through below blog post contents. You already have done the most of parts of setup process guided in the blog (Note that we used arm64 here) - in blog will build your own functional Open Source 4G EPC Core on EKS environment within 45 min following steps similar to this course. https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/
 
 * Go Build your CNF apps with AWS!
+
+## 5. Clean up labs
+1. Go to CloudFormation and "Delete" "eks-workers" stack you created 
+2. After above is deleted also "Delete" the "AWS-Infra" stack
+3. Delete and empty also S3 bucket your created
