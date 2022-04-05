@@ -5,7 +5,7 @@
 * As of today (28 March 2022) EKS cluster is created with Kubernetes 1.21. 
 
 ## 1. Please download/extract CFN templates and lambda_function.zip for this lab accessible locally if not already done
-> **_NOTE:_** See additional instructions on Lab GitHub [Front Page](README.md#download-this-github-as-zip-to-your-local-workstation)
+> **_NOTE:_** See additional instructions on Lab GitHub [Front Page](/README.md#download-this-github-as-zip-to-your-local-workstation)
 
 ## 2. Log in to AWS Console 
 > **_NOTE:_** please select "Oregon" AWS Region
@@ -18,10 +18,10 @@
 * Click *Template is ready* (default), "Upload a template file", "Choose file" Select "aws-immersion-infra.yaml" file that you have downloaded from GitHub under Lab1 
 * Click "Next"
 * Update following parameters (keep default values for others)
-    1. Stack name: **AWS-Infra**
-    2. AvailabilityZones: Choose "**us-west-2a**" and "**us-west-2b**"
-    3. BastionKeyPairName: Validate "**ee-default-keypair**" is selected from dropdown menu (Bottom of the form)
-    4. Click "Next"
+  1. Stack name: **AWS-Infra**
+  2. AvailabilityZones: Choose "**us-west-2a**" and "**us-west-2b**"
+  3. BastionKeyPairName: Validate "**ee-default-keypair**" is selected from dropdown menu (Bottom of the form)
+  4. Click "Next"
 * There is nothing to change in "Configure Stack options" page, so click again "Next" at the bottom
 * At Review page - review the changes, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack" 
 
