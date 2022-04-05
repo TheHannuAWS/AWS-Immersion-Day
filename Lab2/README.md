@@ -54,13 +54,13 @@ ubuntu       focal     e784f03641c9   5 days ago      65.6MB
 ## 2. Upload Image to the ECR Repository
 Run below commands at Bastion host (where you created a docker image) 
 
-* Create an Elastic Container Repository (ECR) named my-ecr in us-west-2
+* Create an Elastic Container Repository (ECR) named my-image in us-west-2
    ````
-   aws ecr create-repository --repository-name my-ecr --region us-west-2
+   aws ecr create-repository --repository-name my-image --region us-west-2
    ````
-Note down "repositoryUri"
+Note down "repositoryUri" - you can also go validate repository in AWS ECR Console
 
-> **_NOTE:_** Replace \<URI from ECR\> with URI of your ECR repo, and IMAGE Id from above "docker images" command.
+> **_NOTE:_** Replace below \<URI from ECR\> with URI of your ECR repo, and \<IMAGE ID\> from above "docker images" command
 
 Login to ECR:
   ````
@@ -70,7 +70,7 @@ Login to ECR:
   ````
   docker tag <IMAGE ID> <URI from ECR>:latest
   ````
-  Push Image:
+  Push Image to ECR:
   ````
   docker push <URI from ECR>:latest
   ````
@@ -135,7 +135,7 @@ EoF
      image: <URI from ECR>:latest
 EoF
 ````
-> **_NOTE:_** Update image: with value from your image in ECR (URI)
+> **_NOTE:_** Update image: with value from your \<URI from ECR\> in ECR (URI)
 
   ````
   kubectl apply -f app-ipvlan.yaml
@@ -147,8 +147,9 @@ EoF
 ````
 kubectl exec -it samplepod -- /bin/bash
 ````  
+Run ifconfig in *samplepod* (not on bastion host) to validate you see two interfaces:
 ````
-root@samplepod:/# ifconfig
+ifconfig
 ````
 ### Automated Multus pod IP management on EKS / VPC
 

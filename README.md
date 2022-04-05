@@ -6,9 +6,10 @@ See [AWS EKS Multus Setup Guide](https://github.com/aws-samples/eks-install-guid
 ## AWS Region
 * ONLY use 'us-west-2' (Oregon) Region during these labs.
 
-## Download GitHub as zip (for CloudFormation Template and Lambda.zip file)
-For the download, please select "Code" on the top left corner of menu, and then click green "Code" menu and then select "Download Zip" file.
-Alternate option is to clone this repository to your workstation.
+## Download this GitHub as zip to your local workstation
+For the download, please select "Code" on the top left corner of menu, and then click green "Code" menu and then select "**Download Zip**" file.
+![Download](Lab1/images/download.png)
+> **_NOTE_** Unzip this on local folder that is accessible - you will need files when progressing with lab's<br>
 
 ## Log in to AWS Event Engine
 * Open [Event Engine](https://dashboard.eventengine.run/dashboard)

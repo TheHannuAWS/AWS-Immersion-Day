@@ -4,15 +4,8 @@
 * Only use Oregon 'us-west-2' AWS Region. (See console screenshot below)
 * As of today (28 March 2022) EKS cluster is created with Kubernetes 1.21. 
 
-## 1. Please download/extract CFN templates for this lab accessible locally
-> **_NOTE:_** To download these from GitHub at once, please select "Code" on the top left corner of main-page menu, and then click green "Code" and then select "Download Zip" file
-
-* CFN repo1: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/aws-immersion-infra.yaml
-    * This template creates VPC, public/private subnets, subnet route tables, IGW, NAT-GW, Security Groups, EKS Cluster and Bastion Host
-* CFN repo2: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/amazon-eks-nodegroup-multus.yaml
-    * This creates Autoscaling group to be used for worker node group of your EKS cluster. This also creates Lambda function for multus-ready worker node group.
-* Lambda Function Zip: https://github.com/TheHannuAWS/AWS-Immersion-Day/blob/main/Lab1/template/lambda_function.zip
-    * Lambda function to be used along with CFN repo2 (worker node group stack).
+## 1. Please download/extract CFN templates and lambda_function.zip for this lab accessible locally if not already done
+> **_NOTE:_** See additional instructions on Lab GitHub [Front Page](README.md#download-this-github-as-zip-to-your-local-workstation)
 
 ## 2. Log in to AWS Console 
 > **_NOTE:_** please select "Oregon" AWS Region
@@ -25,14 +18,14 @@
 * Click *Template is ready* (default), "Upload a template file", "Choose file" Select "aws-immersion-infra.yaml" file that you have downloaded from GitHub under Lab1 
 * Click "Next"
 * Update following parameters (keep default values for others)
-    * Stack name: AWS-Infra
-    * AvailabilityZones: Choose "us-west-2a" and "us-west-2b"
-    * BastionKeyPairName: Validate "ee-default-keypair" is selected from dropdown menu (Bottom of the form)
-    * Click "Next"
-* There is nothing to change in "Configure Stack options" page, so click again "Next" at the bottom.
-* At Review page - review the changes, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack". 
+    1. Stack name: **AWS-Infra**
+    2. AvailabilityZones: Choose "**us-west-2a**" and "**us-west-2b**"
+    3. BastionKeyPairName: Validate "**ee-default-keypair**" is selected from dropdown menu (Bottom of the form)
+    4. Click "Next"
+* There is nothing to change in "Configure Stack options" page, so click again "Next" at the bottom
+* At Review page - review the changes, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack" 
 
-> **_NOTE:_** This will build AWS environment like seen below picture
+> **_NOTE:_** This CloudFormation stack will build below AWS environment and constructs
 
 ![Landing Zone configuration](images/immersion-day1.png)
 
@@ -142,33 +135,36 @@
     * Click *Template is ready* (default), "Upload a template file", "Choose file". Select "amazon-eks-nodegroup-multus.yaml" file that you have downloaded from GitHub
     * Click "Next" 
     * Fill in following Parameters
-      * Stack name: eks-workers
-      * ClusterName: \<Name-of-YOUR-EKS-cluster\> from infra stack - if you used recommended stack name this is AWS-Infra-EKS - validate from your environment
-      * ClusterControlPlaneSecurityGroup: AWS-Infra-EksControlSecurityGroup-xxxx
-      * NodeGroupName: gv2-multus-ng1
-      * Min/Desired/MaxSize: 1/2/3 (Leave defaults)
-      * KeyName: ee-default-keypair (default - dropdown)
-      * VpcId: vpc-AWS-Infra (One you created with infra stack)
-      * PrimarySubnets: privateAz1-AWS-Infra - 
-        * This is for primary K8s networking network - eth0 - choose just one from Az1 
-      * MultusSubnets: multus1Az1-AWS-Infra and multus2Az1-AWS-Infra 
-        * Choose two subnets FORM *AZ1*: MultusSubnet1Az1 and MultusSubnet2Az1
-      * MultusSecurityGroups: multus-Sg-AWS-Infra (Example: AWS-Infra-MultusSecurityGroup-xxxxxx)
-      * LambdaS3Bucket: The one you created above (Just the name of bucket example "AWS-\<accountID\>-immersion")
-      * LambdaS3Key: lambda_function.zip (name of zip file - default)
-      * Press "Next" in bottom of page
+      1. Stack name: **eks-workers**
+      2. ClusterName: \<Name-of-YOUR-EKS-cluster\> from *AWS infra stack* - if you used recommended stack name this is **AWS-Infra-EKS** - validate from your environment
+      3. ClusterControlPlaneSecurityGroup: **AWS-Infra-EksControlSecurityGroup-xxxx**
+      4. NodeGroupName: **gv2-multus-ng1**
+      5. Min/Desired/MaxSize: **1/2/3** (Leave defaults)
+      6. KeyName: **ee-default-keypair** (default - dropdown)
+      7. VpcId: **vpc-AWS-Infra** (Select one you created with AWS infra stack)
+      8. PrimarySubnets: **privateAz1-AWS-Infra** 
+         * This is for primary K8s networking network - eth0 - choose just **one** from Az1 
+      9. MultusSubnets: **multus1Az1-AWS-Infra** and **multus2Az1-AWS-Infra** 
+         * Choose two subnets from **AZ1**: **MultusSubnet1Az1** and **MultusSubnet2Az1**
+      10. MultusSecurityGroups: **multus-Sg-AWS-Infra** (Example: **AWS-Infra-MultusSecurityGroup-xxxxxx**)
+      11. LambdaS3Bucket: The one you created above (Just the name of bucket example "**AWS-\<accountID\>-immersion**")
+      12. LambdaS3Key: **lambda_function.zip** (name of zip file - default)
+    * Validate above changes and press "Next" in bottom of the page
     * There is nothing to specify in "Configure Stack options" page, so please click again "Next" at the bottom
     * At Review page - review the parameters, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack"
     
-* Once CloudFormation stack creation is completed, check *Outputs* part in the menu and copy the value of NodeInstanceRole in notepad. Example: arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-NOTthisONE - use one from your output)
+* Once CloudFormation stack creation is completed, check **Outputs** part in the menu and **copy the value** of NodeInstanceRole in notepad. <br> 
+Example: **arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-NOTthisONE** - use one from your output)
 * Log in again to the Bastion Host where you can run kubectl commands
-* Download aws-auth-cm file at Bastion Host.
+* Download aws-auth-cm file at Bastion Host - and edit it there
 
   ````
   curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
   ````
 
-* Open aws-auth-cm.yaml file downloaded using vi/vim or any text editor you prefer. And place above copied NodeInstanceRole value to the place of "*<ARN of instance role (not instance profile)>*", and then apply this through kubectl
+* Open aws-auth-cm.yaml file downloaded using vi/vim or any text editor you prefer. <br> 
+Place above copied NodeInstanceRole value to the place of "*<ARN of instance role (not instance profile)>*" - next apply this through kubectl <br>
+Edit file:
 
   ````yaml
   kind: ConfigMap
@@ -183,7 +179,7 @@
           - system:bootstrappers
           - system:nodes
   ````
-
+  Apply modifications:
   ````
   kubectl apply -f aws-auth-cm.yaml
   ````
@@ -191,9 +187,9 @@
    ````
    kubectl get nodes -o wide
    ````
- Nodes should be visible as STATUS "Ready" within ~minute.
+ Nodes should be visible as STATUS "**Ready**" within ~minute.
 
- Validate you have multiple (three) interfaces on your EC2 worker nodes attached - and Multus interfaces are tagged with node.k8s.amazonaws.com/no_manage "true" (in AWS console)
+ Validate you have multiple (three) interfaces on your EC2 worker node(s) attached - and Multus interfaces are tagged with node.k8s.amazonaws.com/no_manage "true" (in AWS console)
 
 
-If all looks good (kubectl get nodes command shows "Ready" worker node instance, networks are as configured) - move to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)
+If all looks good (kubectl get nodes command shows "Ready" worker node instance, networks are as configured) - proceed to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)
