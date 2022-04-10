@@ -153,7 +153,7 @@ ifconfig
 ````
 ### Automated Multus pod IP management on EKS / VPC
 
-> **_NOTE:_** 29-Mar-2022 below needs update for arm64 (whereabouts)
+> **_NOTE:_** Below needs update for arm64 (whereabouts) - build Docker image for this lab.
 
 Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs routable in VPC network, please refer to Automated Multus pod IP management on EKS: https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods to automate the pod IP assignment seamlessly, without any change in application code.
 

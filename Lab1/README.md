@@ -2,7 +2,7 @@
 
 ### AWS Region
 * Only use Oregon 'us-west-2' AWS Region. (See console screenshot below)
-* As of today (28 March 2022) EKS cluster is created with Kubernetes 1.21. 
+* EKS cluster is created with Kubernetes 1.21 version 
 
 ## 1. Please download/extract CFN templates and lambda_function.zip for this lab accessible locally if not already done
 > **_NOTE:_** See additional instructions on Lab GitHub [Front Page](/README.md#download-this-github-as-zip-to-your-local-workstation)
@@ -59,6 +59,7 @@
          ssh -A ec2-user@<Public IP of your Bastion host>
          ````
     
+## Export Credentials
 * After you logged in to bastion host as ec2-user with your preferred method export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) 
 
   > **_NOTE:_** Use ones you copied/stored earlier
@@ -72,7 +73,7 @@
 
    > **_NOTE:_** In case you close the session you need to re-export above for credentials to work!
 
-* Next validate exported AWS credentials are in use
+* Validate exported AWS credentials are in use
     
      ````
      aws sts get-caller-identity

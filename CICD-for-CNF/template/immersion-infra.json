@@ -1,0 +1,17 @@
+{
+    "Parameters": {
+        "AvailabilityZones": "us-west-2a, us-west-2b",
+        "VpcCidr":  "10.0.0.0/16",
+        "PublicSubnetAz1Cidr": "10.0.0.0/24",
+        "PublicSubnetAz2Cidr": "10.0.1.0/24",
+        "PrivateSubnetAz1Cidr": "10.0.2.0/24",
+        "PrivateSubnetAz2Cidr": "10.0.3.0/24",
+        "MultusSubnet1Az1Cidr": "10.0.4.0/24",
+        "MultusSubnet1Az2Cidr": "10.0.5.0/24",
+        "MultusSubnet2Az1Cidr": "10.0.6.0/24",
+        "MultusSubnet2Az2Cidr": "10.0.7.0/24",
+        "BastionKeyPairName": "ee-default-keypair",
+        "BastionInstanceType": "t4g.large",
+        "LatestAmiId": "/aws/service/ami-amazon-linux-latest/amzn2-ami-kernel-5.10-hvm-arm64-gp2"
+    }
+}
