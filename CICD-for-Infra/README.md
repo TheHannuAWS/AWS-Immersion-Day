@@ -137,7 +137,7 @@ Select "Next" <br>
 
 ## Commit configuration files to CodeCommit
 
-To fix pipeline **copy** below two files to your cloned repository's root folder - from Lab3/template folder of this github.<br>
+To fix pipeline **copy** below two files to your cloned repository's root folder - from **CICD-for-Infra/template/** folder of this github.<br>
 - **aws-immersion-infra.yaml**<br>
 - **infra-parameters.yaml**<br>
 
