@@ -114,7 +114,7 @@
   ````
   kubectl get svc
   ````
-  Example Output:
+  Example Output:<br>
   ![get svc](images/k8s-get-svc.png)
 
 * You can verify cluster also with AWS CLI
@@ -139,27 +139,39 @@
     * Click *Template is ready* (default), "Upload a template file", "Choose file". Select "amazon-eks-nodegroup-multus.yaml" file that you have downloaded from GitHub
     * Click "Next" 
     * Fill in following Parameters
-      1. Stack name: **eks-workers**
+      1. Stack name: **eks-workers** 
+
       2. ClusterName: \<Name-of-YOUR-EKS-cluster\> from *AWS infra stack* - if you used recommended stack name this is **AWS-Infra-EKS** - validate from your environment
+      
       3. ClusterControlPlaneSecurityGroup: **AWS-Infra-EksControlSecurityGroup-xxxx**
+      
       4. NodeGroupName: **gv2-multus-ng1**
+      
       5. Min/Desired/MaxSize: **1/2/3** (Leave defaults)
+      
       6. KeyName: **ee-default-keypair** (default - dropdown)
+      
       7. VpcId: **vpc-AWS-Infra** (Select one you created with AWS infra stack)
+      
       8. PrimarySubnets: **privateAz1-AWS-Infra** 
          * This is for primary K8s networking network - eth0 - choose just **one** from Az1 
+      
       9. MultusSubnets: **multus1Az1-AWS-Infra** and **multus2Az1-AWS-Infra** 
          * Choose two subnets from **AZ1**: **MultusSubnet1Az1** and **MultusSubnet2Az1**
+      
       10. MultusSecurityGroups: **multus-Sg-AWS-Infra** (Example: **AWS-Infra-MultusSecurityGroup-xxxxxx**)
-      11. LambdaS3Bucket: The one you created above (Just the name of bucket example "**AWS-\<accountID\>-immersion**")
-      12. LambdaS3Key: **lambda_function.zip** (name of zip file - default)
+      
+      11. LambdaS3Bucket: The one you created above. Just the name of bucket example: "\<your name\>-\<accountid\>-immersion"
+      
+      12. LambdaS3Key: **lambda_function.zip** (name of zip file - default)<br>
+      
     * Validate above changes and press "Next" in bottom of the page
     * There is nothing to specify in "Configure Stack options" page, so please click again "Next" at the bottom
     * At Review page - review the parameters, go bottom of the page and *mark* checkbox for "I acknowledge that AWS...", and then click "Create stack"
     
-* Once CloudFormation stack creation is completed, check **Outputs** part in the menu and **copy the value** of NodeInstanceRole in notepad. <br> 
-Example: **arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-NOTthisONE** - use one from your output)
-* Log in again to the Bastion Host where you can run kubectl commands
+* Once CloudFormation stack creation is completed, check **Outputs** part in the menu and **copy the full value** of NodeInstanceRole in notepad. <br> 
+Example: **arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-EXAMPLEuseYOURS** - use one from your output<br>
+* Execute following on Bastion Host where you can run kubectl commands<br>
 * Download aws-auth-cm file at Bastion Host - and edit it there
 
   ````
