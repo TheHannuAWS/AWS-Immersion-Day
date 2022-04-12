@@ -2,7 +2,8 @@
 
 ### AWS Region
 * Only use Oregon 'us-west-2' AWS Region. (See console screenshot below)
-* EKS cluster is created with Kubernetes 1.21 version 
+* EKS cluster is created with Kubernetes 1.21 version
+* Use ec2-user on each of the steps unless instructed otherwise 
 
 ## 1. Please download/extract CFN templates and lambda_function.zip for this lab accessible locally if not already done
 > **_NOTE:_** See additional instructions on Lab GitHub [Front Page](/README.md#download-this-github-as-zip-to-your-local-workstation)
@@ -32,25 +33,32 @@
 ## 4. Login to Bastion Host - after stack is executed
 > **_NOTE:_** Building the infra (running Cloud Formation) takes a while (~10mins) feel free to look around CFN stack and services created (EC2, VPC, EKS...)
 
-* We use EC2 "Bastion host" to securely access the environment. On bastion host we will install kubectl and other tools to manage the environment.
+* We use EC2 "Bastion host" to securely access the environment. On bastion host we will install kubectl and other tools to manage the environment. Use **ec2-user** when logging in.
 
-* Connect to bastion host (below are multiple alternatives - choose one you prefer): 
-  1. Use *EC2 Instance Connect* to login to EC2 instance from the AWS console
-     * EC2 -> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "EC2 Instance Connect"-tab
-     * click "Connect"
+* Connect to bastion host (below are multiple alternatives - choose one you prefer or platform you have): 
 
-  2. AWS Systems Manager (SSM)
+  1. AWS Systems Manager (SSM)
      * You can use "Session Manager" to connect as instance role has SSM policy and SSM agent is automatically deployed
      * EC2-> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "Session Manager"-tab
      * change to ec2-user after login
          ````
          sudo su - ec2-user
          ````
+   
+  2. Use *EC2 Instance Connect* to login to EC2 instance from the AWS console
+     * EC2 -> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "EC2 Instance Connect"-tab
+     * click "Connect"
+        ````
+        sudo su - ec2-user
+        ````
   3. Windows - Log in from your laptop use WSL2 or putty
-     * Use "ec2-user" as your user
+     * Use "ec2-user" as user
+     * In case your company network requires proxy set it
      * For PuTTy refer to the guide, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html
 
-  4.  MAC - Log in from your laptop
+  4.  MAC (Apple) - Log in from your laptop
+      * Use "ec2-user" as user
+      * In case your company network requires proxy set it
       * Use key pair downloaded to access to the instance. Use public IP of your instance in below command
 
          ````
@@ -62,15 +70,10 @@
 ## Export Credentials
 * After you logged in to bastion host as ec2-user with your preferred method export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) 
 
-  > **_NOTE:_** Use ones you copied/stored earlier
+  > **_NOTE:_** Use VALUES you copied/stored earlier in Event Engine and export like below
 
-    ````
-    export AWS_DEFAULT_REGION=us-west-2
-    export AWS_ACCESS_KEY_ID=ASIA..
-    export AWS_SECRET_ACCESS_KEY=4wyDA..
-    export AWS_SESSION_TOKEN=IQo...
-    ````
-
+  ![CREDS](images/aws-credentials.png)
+    
    > **_NOTE:_** In case you close the session you need to re-export above for credentials to work!
 
 * Validate exported AWS credentials are in use
@@ -82,7 +85,7 @@
   
 ## 5. Install kubectl to Bastion Host
 
-* Download kubectl (arm64) and install it to path in Bastion Host
+* Download kubectl (arm64) and install it to path in Bastion Host as ec2-user
 
   ````bash
   curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/arm64/kubectl
@@ -112,12 +115,9 @@
   kubectl get svc
   ````
   Example Output:
-  ````
-  NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-  kubernetes   ClusterIP   172.20.0.1   <none>        443/TCP   31m
-  ````
+  ![get svc](images/k8s-get-svc.png)
 
-* Verify cluster also with AWS CLI
+* You can verify cluster also with AWS CLI
   ````
   aws eks describe-cluster --name=<your eks cluster name>
   ````
@@ -125,7 +125,10 @@
 ## 6. Self-managed Node Group (NG) creation for Multus-ready Worker NG
 * Open AWS S3 service and create new S3 bucket (folder/directory) with *"Create bucket"* - orange button 
   * Use "US West (Oregon) us-west-2" as AWS Region
- * Bucket name must be globally unique like *AWS-\<AccountID\>-immersion* (recommend to use AWS-account id-your_name) 
+ * Bucket name must be globally unique as example *\<your name\>-\<accountid\>-immersion* ALL small letters. You can get Account ID from top corner of AWS console or AWS CLI
+     ````
+     aws sts get-caller-identity --output text --query Account
+     ````
    * Write bucket name down - you will need it later
  * Leave other settings as defaults - and select "Create Bucket" in bottom of page
  * Click the bucket name you just created and drag & drop "lambda_function.zip" file there (which you can find from Lab1/template directory of this GitHub). Next, click *"Upload"*
@@ -164,23 +167,13 @@ Example: **arn:aws:iam::455332889914:role/ng1-NodeInstanceRole-NOTthisONE** - us
   ````
 
 * Open aws-auth-cm.yaml file downloaded using vi/vim or any text editor you prefer. <br> 
-Place above copied NodeInstanceRole value to the place of "*<ARN of instance role (not instance profile)>*" - next apply this through kubectl <br>
-Edit file:
+Place above copied **FULL *NodeInstanceRole* value** to the place of "*<ARN of instance role (not instance profile)>*" - next apply this through kubectl <br>
 
-  ````yaml
-  kind: ConfigMap
-  metadata:
-    name: aws-auth
-    namespace: kube-system
-  data:
-    mapRoles: |
-      - rolearn: <ARN of instance role (not instance profile)> # <- REPLACE THIS!!!
-        username: system:node:{{EC2PrivateDNSName}}
-        groups:
-          - system:bootstrappers
-          - system:nodes
-  ````
-  Apply modifications:
+Example File with *rolearn:* value updated - use your own value
+
+  ![rolearn](images/role-arn.png)
+
+  Apply modifications after file is edited:
   ````
   kubectl apply -f aws-auth-cm.yaml
   ````
@@ -190,7 +183,6 @@ Edit file:
    ````
  Nodes should be visible as STATUS "**Ready**" within ~minute.
 
- Validate you have multiple (three) interfaces on your EC2 worker node(s) attached - and Multus interfaces are tagged with node.k8s.amazonaws.com/no_manage "true" (in AWS console)
-
+ Optional: Validate in AWS console you have multiple (three) interfaces on your EC2 worker node(s) attached - and Multus interfaces are tagged with node.k8s.amazonaws.com/no_manage "true"
 
 If all looks good (kubectl get nodes command shows "Ready" worker node instance, networks are as configured) - proceed to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)

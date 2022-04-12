@@ -2,23 +2,25 @@
 
 ## AWS Region
 * ONLY use 'us-west-2' (Oregon) AWS region during these labs
+* Use ec2-user on each of the steps unless instructed otherwise
 
 ## 1. Create a Docker Image 
-* Prepare docker environment (login your bastion host EC2 instance)
+* Prepare docker environment (login your bastion host EC2 instance as **ec2-user**)
+  
   ````bash
   sudo yum install docker -y
   sudo usermod -aG docker ${USER}
   sudo service docker start
   ````
-  Logout from Bastion and Login back and re-export credentials.
+  **Logout from Bastion** and Login back and **re-export credentials**
 
-  > **_NOTE:_** You have to re-configure AWS Credential (copy "export AWS_..." again). 
+  > **_NOTE:_** You have to re-configure AWS Credential (paste "export AWS_..." again). 
   
   Verify docker works
-  ````
+  ````bash
   docker
   ````
-* Create a directory for Dockerfile creation.
+* Create a directory for Dockerfile creation
   ````bash
   cd ~
   mkdir dockerimage && cd dockerimage
@@ -43,11 +45,7 @@
   ````
 Example output:
 
-````
-REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
-<none>       <none>    1da914777598   9 seconds ago   526MB <-- This your image
-ubuntu       focal     e784f03641c9   5 days ago      65.6MB
-````
+![docker](images/docker-build.png)
 
 > **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598) - you need it below
 
@@ -66,7 +64,7 @@ Login to ECR:
   ````
   aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin <URI from ECR>
   ````
-  Tag Image:
+  Tag image:
   ````
   docker tag <IMAGE ID> <URI from ECR>:latest
   ````
@@ -75,6 +73,8 @@ Login to ECR:
   docker push <URI from ECR>:latest
   ````
   
+ Optional: Validate image is in ECR repository in AWS console
+
 ## 3. Create Multus App using uploaded Docker image from the ECR
 * Create a new directory at your bastion host (under /home/ec2-user/)
 ````
@@ -135,23 +135,26 @@ EoF
      image: <URI from ECR>:latest
 EoF
 ````
+
 > **_NOTE:_** Update image: with value from your \<URI from ECR\> in ECR (URI)
 
-  ````
+  ````bash
+  # NOTE! Update image: URI to point ECR before applying the file
   kubectl apply -f app-ipvlan.yaml
   ````
-  ````
+  ````bash
   kubectl describe pod samplepod
   ````
+* In case there are errors on image pull or something - take second look on steps above
 * Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24)
 ````
 kubectl exec -it samplepod -- /bin/bash
 ````  
-Run ifconfig in *samplepod* (not on bastion host) to validate you see two interfaces:
+Run ifconfig in *samplepod* as root (not on bastion host) to validate you see two interfaces:
 ````
 ifconfig
 ````
-### Automated Multus pod IP management on EKS / VPC
+### Extra: Automated Multus pod IP management on EKS / VPC
 
 > **_NOTE:_** Below needs update for arm64 (whereabouts) - build Docker image for this lab.
 
