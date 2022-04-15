@@ -1,10 +1,80 @@
-# Lab2: EKS for CNF engineer (Application creation and private ECR repo)
+# Lab2: EKS for CNF engineer: Application creation and private ECR repo deployment
 
 ## AWS Region
 * ONLY use 'us-west-2' (Oregon) AWS region during these labs
 * Use ec2-user on each of the steps unless instructed otherwise
 
-## 1. Create a Docker Image 
+## 1. In this lab we use Bastion Host to build arm64 architecture dummy CNF
+
+* There are multiple methods to connect to to bastion host - in this lab we use AWS Systems Manager service: 
+  * In AWS Console open EC2 service and there select the bastion host and press "**Connect**"
+  * EC2 -> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "Session Manager"-tab. See picture below:<br>
+  ![ssm-connect](/Lab2/images/open-ssm.png)
+
+  * Change to ec2-user after login
+    ````bash
+    sudo su - ec2-user
+    ````
+    
+### Export Credentials
+* After you logg in to bastion host as **ec2-user** with Systems Manager export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN) 
+
+  > **_NOTE:_** Use VALUES you copied/stored earlier in Event Engine and export like obfuscated example below
+
+  ![CREDS](images/aws-credentials.png)
+    
+   
+* Validate exported AWS credentials are in use
+    
+     ````
+     aws sts get-caller-identity
+     ````
+  Make sure there is "**TeamRole**" visible in Arn if not re-check your export above
+  
+  Store exports in .bash_profile so they are preserved on shell log outs:
+  ````bash
+  echo "export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}" | tee -a ~/.bash_profile
+  echo "export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" | tee -a ~/.bash_profile
+  echo "export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" | tee -a ~/.bash_profile
+  echo "export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" | tee -a ~/.bash_profile
+  ````
+
+  > **_NOTE:_** This is done for convenience for the labs - not a security best practice
+
+## 2. Install and configure kubectl to Bastion/Build Host
+
+* Download kubectl (arm64) and install it to path in Bastion Host as ec2-user
+
+  ````bash
+  curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/arm64/kubectl
+  chmod +x ./kubectl
+  mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+  echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+  echo 'source <(kubectl completion bash)' >>~/.bashrc
+  kubectl version --short --client
+  ````
+
+* Check name of your EKS cluster - and write it down on safe place / notepad
+   * You can see this in CloudFormation "Output" or in EKS console (service search -> EKS)
+   * You can also use CLI to get EKS cluster name
+     ````
+     aws eks list-clusters --output text --query clusters
+     ````
+
+* Configure kubeconfig with EKS CLI to access your cluster K8s API
+
+  ````
+  aws eks update-kubeconfig --name=$(aws eks list-clusters --output text --query clusters)
+  ````
+
+* Verify kubectl command works and can connect
+  ````
+  kubectl get svc
+  ````
+  Example Output:<br>
+  ![get svc](images/k8s-get-svc.png)
+
+## 3. Create a Docker Image
 * Prepare docker environment (login your bastion host EC2 instance as **ec2-user**)
   
   ````bash
@@ -12,20 +82,25 @@
   sudo usermod -aG docker ${USER}
   sudo service docker start
   ````
-  **Logout from Bastion** and Login back and **re-export credentials**
+  **Logout from Bastion host** and Login back as ec2-user
 
-  > **_NOTE:_** You have to re-configure AWS Credential (paste "export AWS_..." again). 
+  > **_NOTE:_** validate that credentials are exported after logging back in as **ec2-user** 
+  ````  
+  env |grep AWS
+  ````
   
-  Verify docker works
+  Validate docker works
   ````bash
   docker
   ````
-* Create a directory for Dockerfile creation
+
+* Create a directory for Dockerfile
   ````bash
   cd ~
   mkdir dockerimage && cd dockerimage
   ````
-* Create a Dockerfile file (file name to be Dockerfile with below contents)
+
+* Create a Dockerfile -file
   ````
   cat <<EoF > Dockerfile
   FROM ubuntu:focal
@@ -39,56 +114,67 @@
   ```` 
   docker build .
   ````
-* Verify Docker image created. And note down image ID
+* Verify Docker image was created. And note down image ID - you need it with ECR
   ````
   docker images 
   ````
-Example output:
+  Example output:
 
-![docker](images/docker-build.png)
+  ![docker](images/docker-build.png)
 
 > **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598) - you need it below
 
-## 2. Upload Image to the ECR Repository
+## 4. Upload Image to the ECR Repository
 Run below commands at Bastion host (where you created a docker image) 
 
 * Create an Elastic Container Repository (ECR) named my-image in us-west-2
    ````
    aws ecr create-repository --repository-name my-image --region us-west-2
    ````
-Note down "repositoryUri" - you can also go validate repository in AWS ECR Console
 
-> **_NOTE:_** Replace below \<URI from ECR\> with URI of your ECR repo, and \<IMAGE ID\> from above "docker images" command
+  Store "reposotoryUri in variable for later use:
+  ````bash 
+  export REPOURI=$(aws ecr describe-repositories --query "repositories[].[repositoryUri]" --output text)
+  ````
+  Validate that value matches URI above
+  ````bash
+  echo $REPOURI
+  ````
 
-Login to ECR:
-  ````
-  aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin <URI from ECR>
-  ````
-  Tag image:
-  ````
-  docker tag <IMAGE ID> <URI from ECR>:latest
-  ````
-  Push Image to ECR:
-  ````
-  docker push <URI from ECR>:latest
-  ````
+* Login to ECR:
+    ````
+    aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin ${REPOURI}
+    ````
+*  Tag image:
+
+   > **_NOTE:_** Replace below \<IMAGE ID\> you wrote down from above "docker images" command before executing
+
+    ````
+    docker tag <IMAGE ID> ${REPOURI}:latest
+    ````
+*  Push Image to ECR:
+    ````
+    docker push ${REPOURI}:latest
+    ````
   
- Optional: Validate image is in ECR repository in AWS console
+ Optional: Validate image is visible in ECR repository on AWS console
 
-## 3. Create Multus App using uploaded Docker image from the ECR
+## 5. Create Multus App using uploaded Docker image from the ECR
+
 * Create a new directory at your bastion host (under /home/ec2-user/)
-````
-cd ~
-mkdir k8s-environment && cd k8s-environment
-````
-* Install multus CNI (This uses us-west-2 as default image location - below is for arm64).
- ````
- kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/multus/v3.7.2-eksbuild.2/aws-k8s-multus.yaml
- ````
-Validate that demonset started the kube-multus-xxxxx PoD(s):
-````
-kubectl get pod -A
-````
+  ````
+  cd ~
+  mkdir k8s-environment && cd k8s-environment
+  ````
+* Install multus CNI (This uses us-west-2 as default image location - below is for arm64 architecture).
+   ````
+   kubectl apply -f https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/master/config/multus/v3.7.2-eksbuild.2/aws-k8s-multus.yaml
+   ````
+
+* Validate that demonset started the kube-multus-xxxxx PoD(s):
+  ````
+  kubectl get pod -A
+  ````
 
 * Create below networkAttachmentDefinition (multus-ipvlan.yaml) and apply it to the cluster.
 
@@ -114,12 +200,13 @@ spec:
     }'
 EoF
 ````
-
-  ````
-  kubectl apply -f multus-ipvlan.yaml
-  ````
+Apply configuration
+````
+kubectl apply -f multus-ipvlan.yaml
+````
 
 * Deploy your docker using above network attachment. Create a file named, app-ipvlan.yaml
+
 ````yaml
  cat <<EoF > app-ipvlan.yaml
  apiVersion: v1
@@ -132,46 +219,50 @@ EoF
    containers:
    - name: samplepod
      command: ["/bin/bash", "-c", "trap : TERM INT; sleep infinity & wait"]
-     image: <URI from ECR>:latest
+     image: ${REPOURI}:latest
 EoF
 ````
+> **_NOTE:_** Validate file has ECR image as "**image:**" value before applying configuration!
 
-> **_NOTE:_** Update image: with value from your \<URI from ECR\> in ECR (URI)
+````bash
+kubectl apply -f app-ipvlan.yaml
+````
 
-  ````bash
-  # NOTE! Update image: URI to point ECR before applying the file
-  kubectl apply -f app-ipvlan.yaml
-  ````
-  ````bash
-  kubectl describe pod samplepod
-  ````
-* In case there are errors on image pull or something - take second look on steps above
+````bash
+kubectl describe pod samplepod
+````
+* In case there are errors on image pull - take second look on steps above
+
 * Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24)
-````
-kubectl exec -it samplepod -- /bin/bash
-````  
-Run ifconfig in *samplepod* as root (not on bastion host) to validate you see two interfaces:
-````
-ifconfig
-````
+
+  ````
+  kubectl exec -it samplepod -- /bin/bash
+  ````  
+* Run ifconfig in *samplepod* as root (not on bastion host) to validate you see two interfaces:<br>
+  ````
+  ifconfig
+  ````
+  Example output:<br>
+  ![samplepod](images/samplepod-ifconfig.png)
+
 ### Extra: Automated Multus pod IP management on EKS / VPC
 
 > **_NOTE:_** Below needs update for arm64 (whereabouts) - build Docker image for this lab.
 
 Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs routable in VPC network, please refer to Automated Multus pod IP management on EKS: https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods to automate the pod IP assignment seamlessly, without any change in application code.
 
-## 4. What next? 
+## 5. What next? 
 * Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
 * Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
-* Update some parameter in CFN - what happens ?
-* Official AWS Multus Guide: https://github.com/aws-samples/eks-install-guide-for-multus (Includes latest updates)
+* Update some parameter in CFN - what happens ? How to add second worker node to EKS?
+* See official AWS Multus Guide: https://github.com/aws-samples/eks-install-guide-for-multus (Includes latest updates)
 * Look additional EKS labs in [eksworksop.com](https://www.eksworkshop.com/)
   * Especially: IAM/RBAC/IRSA related and how to work those with EKS
 * You can also walk through below blog post contents. You already have done the most of parts of setup process guided in the blog (Note that we used arm64 here) - in blog will build your own functional Open Source 4G EPC Core on EKS environment within 45 min following steps similar to this course. https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/
 
 * Go Build your CNF apps with AWS!
 
-## 5. Clean up labs
+## 6. Clean up labs
 1. Go to CloudFormation and "Delete" "eks-workers" stack you created 
 2. After above is deleted also "Delete" the "AWS-Infra" stack
 3. Delete and empty also S3 bucket your created

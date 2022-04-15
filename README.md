@@ -25,7 +25,7 @@ Log in with passcode received in e-mail and perform following steps:
     * Download **ee-default-keypair** to your PC - also copy key material to notepad
 3. Open "AWS Console"
     * Copy credentials (export AWS_DEFAULT_REGION=..) in notepad
-    * Click "Open AWS Console" (Switch to New Console if prompted)
+    * Click "Open AWS Console" ("Switch to the new Console Home" if prompted)
 
 > **_NOTE:_** You have now access to AWS account for this workshop!
 

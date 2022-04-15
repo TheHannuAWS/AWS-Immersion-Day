@@ -64,12 +64,12 @@ Parameters:
 
   NodeAutoScalingGroupDesiredCapacity:
     Type: Number
-    Default: 2
+    Default: 1
     Description: Desired capacity of EKS Node Group Auto Scaling Group (ASG)
 
   NodeAutoScalingGroupMaxSize:
     Type: Number
-    Default: 3
+    Default: 2
     Description: Maximum size of Node Group ASG. Set to at least 1 greater than NodeAutoScalingGroupDesiredCapacity
 
   NodeAutoScalingGroupMinSize:

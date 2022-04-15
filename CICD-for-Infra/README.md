@@ -8,7 +8,6 @@ In this lab we provide alternate way for [Step 3 in Lab1](/Lab1/README.md#3-crea
 
 ## AWS Region
 * Only use Oregon 'us-west-2' AWS Region<br>
-* Use ec2-user on each of the steps unless instructed otherwise
 
 ## Open CloudShell from AWS console to create necessary structures
 
@@ -212,7 +211,7 @@ aws sts assume-role --role-arn arn:aws:iam:${ACCOUNT_ID}:role/cf-execution-coded
 
 Fill in above values to below to be able to patch permissions for TeamRole - and export those (for cd-execution-codedeploy-role):
 
-![Wxport](images/aws-export.png)
+![Export](images/aws-export.png)
 
 ### Patch aws-auth
 ````
@@ -237,7 +236,7 @@ unset AWS_ACCESS_KEY_ID
 unset AWS_SESSION_TOKEN
 unset AWS_SECRET_ACCESS_KEY
 ````
-Validate that you can see EKS cluster data as TeamRole (EKS Console - and kubeclt)
+Validate that you can see EKS cluster data as TeamRole (EKS Console - and kubectl)
 
 ## Next
 
