@@ -1,24 +1,24 @@
 # Lab1: EKS for CNF (Containerized Network Functions) engineer - AWS environment creation
 
-### AWS Region
+### AWS Region and other notes
 * Only use Oregon 'us-west-2' AWS Region. (See console screenshot below)
-* EKS cluster is created with Kubernetes 1.21 version
+* EKS cluster is created with Kubernetes 1.21 version with arm64 architecture worker node
 
 ## 1. Download/extract CFN templates and lambda_function.zip for this lab accessible locally if not already done
 > **_NOTE:_** See additional instructions on Lab GitHub [Front Page](/README.md#download-this-github-as-zip-to-your-local-workstation)
 
-## 2. Log in to AWS Console and open CloudFormation service
+## 2. Open CloudFormation service from AWS console
 > **_NOTE:_** please select "Oregon" AWS Region<br>
+  * Type "CloudFormation" at search service section and open AWS CloudFormation service.  Tip: Use right mouse button - Open in New tab when opening <br>
 
   ![Console View](images/console.png)
 
-## 3. Create Environment with CloudFormation (CFN)
-* Type "CloudFormation" at search service section and open AWS CloudFormation service.  Tip: Use right mouse button - Open in New tab when opening
-* In CFN select *Create stack* - *With new resources(standard)*
-* Click *Template is ready* (default), "Upload a template file", "Choose file" Select "aws-immersion-infra.yaml" file that you have downloaded from GitHub in folder **AWS-Immersion-Day-main\Lab1\template**<br>
+## 3. Create AWS environment with CloudFormation (CFN)
+* In CloudFormation select **Create stack** - *With new resources(standard)*
+* Click *Template is ready* (default), "Upload a template file", "Choose file" Select "*aws-immersion-infra.yaml*" file that you have downloaded from GitHub in folder **AWS-Immersion-Day-main\Lab1\template**<br>
   ![Console View](images/create-stack-console.png)
 * Click "Next"
-* Update following parameters (leave default values for others)
+* Fill in following Parameters - **LEAVE OTHERS TO DEFAULTS**
   1. Stack name: **AWS-Infra**
   2. AvailabilityZones: Choose "**us-west-2a**" and "**us-west-2b**"
 * Click "Next"
@@ -29,11 +29,11 @@
 
 ![Landing Zone configuration](images/immersion-day1.png)
 
-> **_NOTE:_** Building the infra (running Cloud Formation) takes a while (~10mins) feel free to look around CFN stack and services created (EC2, VPC, EKS...). To see current status refresh the "Events" in CloudFormation console
+> **_NOTE:_** Building the infra (executing AWS CloudFormation) takes a while (~10mins) feel free to look around CFN stack and services created (EC2, VPC, EKS...). To see current status **refresh** the "Events" in CloudFormation console
 
-## 3. Open AWS CloudShell from AWS console - after stack is created successfully
+## 4. Open AWS CloudShell from AWS console - after AWS CloudFormation stack is created successfully
 
-Open CloudShell from AWS console main page:<br>
+Open AWS CloudShell from AWS console main page "CloudShell" icon:<br>
 ![CloudShellStart](images/cloud-shell.png) 
 
 Close Welcome to AWS CloudShell prompt and check "Do not show again"
@@ -47,14 +47,12 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
 ````
 
-Install kubectl (x86 version) and bash completion
-````
+Install kubectl (x86 version)
+````bash
 curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
 chmod +x ./kubectl
 mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
 echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
-echo 'sudo yum install -y bash-completion > /dev/null 2>&1' >> ~/.bash_profile
-echo 'source <(kubectl completion bash)' >>~/.bashrc
 kubectl version --short --client
 ````
 
@@ -79,23 +77,23 @@ kubectl version --short --client
   Example Output:<br>
   ![get svc](images/k8s-get-svc.png)
 
-* Optional: Verify EKS cluster configuration with AWS CLI
+* Verify EKS cluster configuration with AWS CLI
   ````
   aws eks describe-cluster --name=$(aws eks list-clusters --output text --query clusters)
   ````
 
-## 4. Create self-managed Multus ready Node Group(NG) for EKS
+## 5. Create self-managed Multus ready Node Group(NG) for EKS
 Create S3 bucket to store Lambda function:<br>
 
 ![S3](images/S3.png)
 
 ### Open AWS S3 service and create new S3 bucket (folder/directory) with *"Create bucket"* - orange button 
   * Use "US West (Oregon) us-west-2" as AWS Region
- * Bucket name must be globally unique as example *\<your name\>-\<accountid\>-immersion* ALL small letters. You can get Account ID from top corner of AWS console or AWS CLI in CloudShell
+ * Bucket name must be globally unique as example *\<your name\>-\<accountid\>-immersion* ALL small letters. You can get AWS Account ID from top corner of AWS console or AWS CLI in CloudShell
      ````
      aws sts get-caller-identity --output text --query Account
      ````
-   * Write bucket name down - you will need it later
+ * Write bucket name down - you will need it later
  * Leave other settings as defaults - and select "Create Bucket" in bottom of page
  * Click the bucket name you just created and drag & drop "lambda_function.zip" file there (which you can find from Lab1/template directory of this GitHub). Next, click *"Upload"*
    * Validate that you have "lambda_function.zip" file in your S3 bucket
@@ -123,10 +121,10 @@ Create S3 bucket to store Lambda function:<br>
       7. VpcId: **vpc-AWS-Infra** (Select one you created with AWS infra stack)
       
       8. PrimarySubnets: **privateAz1-AWS-Infra** 
-         * This is for primary K8s networking network - eth0 - choose just **one** from Az1 
+         * This is for primary K8s networking network - eth0 - choose just **one** from AZ1 
       
       9. MultusSubnets: **multus1Az1-AWS-Infra** and **multus2Az1-AWS-Infra** 
-         * Choose two subnets from **AZ1**: **MultusSubnet1Az1** and **MultusSubnet2Az1**
+         * Choose **both** subnets from **AZ1**: **MultusSubnet1Az1** and **MultusSubnet2Az1**
       
       10. MultusSecurityGroups: **multus-Sg-AWS-Infra** (Example: **AWS-Infra-MultusSecurityGroup-xxxxxx**)
       
@@ -140,7 +138,7 @@ Create S3 bucket to store Lambda function:<br>
 
     * At Review page - review the parameters, go bottom of the page and **mark** checkbox for "I acknowledge that AWS...", and then click "Create stack" <br>
     
-* Once CloudFormation stack creation is completed, check **Outputs** part in the FCN menu and **copy the full value** of NodeInstanceRole in notepad. <br>
+* Once CloudFormation stack creation is completed, check **Outputs** part in the CFN menu and **copy the full value** of NodeInstanceRole in notepad. <br>
 ![Console View](images/cfn-outputs-nodes.png)
 
 Example: **arn:aws:iam::455332889914:role/eks-workers-NodeInstanceRole-EXAMPLEuseYOURS** - use one from your output<br>

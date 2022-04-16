@@ -1,14 +1,13 @@
 # Lab2: EKS for CNF engineer: Application creation and private ECR repo deployment
 
-## AWS Region
+## AWS Region and other notes
 * ONLY use 'us-west-2' (Oregon) AWS region during these labs
 * Use ec2-user on each of the steps unless instructed otherwise
 
 ## 1. In this lab we use Bastion Host to build arm64 architecture dummy CNF
 
-* There are multiple methods to connect to to bastion host - in this lab we use AWS Systems Manager service: 
-  * In AWS Console open EC2 service and there select the bastion host and press "**Connect**"
-  * EC2 -> Instances -> "Connect" (right top corner of screen when selecting instance) -> Select "Session Manager"-tab. See picture below:<br>
+* There are multiple methods (SSH, Instance Connect) to connect to the bastion host - in this lab we use AWS Systems Manager service
+  * Open EC2 service -> Instances (running) -> Select Bastion Host -> "Connect" (right top corner of screen when selecting instance - see picture below) -> In "Session Manager"-tab press Connect to open shell connection. <br>
   ![ssm-connect](/Lab2/images/open-ssm.png)
 
   * Change to ec2-user after login
@@ -19,7 +18,7 @@
 ### Export Credentials
 * After you logg in to bastion host as **ec2-user** with Systems Manager export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN) 
 
-  > **_NOTE:_** Use VALUES you copied/stored earlier in Event Engine and export like obfuscated example below
+  > **_NOTE:_** Use VALUES you copied/stored earlier in Event Engine and export like *obfuscated* example below
 
   ![CREDS](images/aws-credentials.png)
     
@@ -29,7 +28,7 @@
      ````
      aws sts get-caller-identity
      ````
-  Make sure there is "**TeamRole**" visible in Arn if not re-check your export above
+  Make sure there is "**TeamRole**" visible in Arn if NOT re-check your export commands on above step
   
   Store exports in .bash_profile so they are preserved on shell log outs:
   ````bash
@@ -55,12 +54,11 @@
   ````
 
 * Check name of your EKS cluster - and write it down on safe place / notepad
-   * You can see this in CloudFormation "Output" or in EKS console (service search -> EKS)
-   * You can also use CLI to get EKS cluster name
+  * You can use CLI to get EKS cluster name
      ````
      aws eks list-clusters --output text --query clusters
      ````
-
+  * You can also see this in CloudFormation "Output" or in EKS console (service search -> EKS)<br>
 * Configure kubeconfig with EKS CLI to access your cluster K8s API
 
   ````
@@ -82,13 +80,20 @@
   sudo usermod -aG docker ${USER}
   sudo service docker start
   ````
-  **Logout from Bastion host** and Login back as ec2-user
+  After above **Logout** from Bastion host and then back in as **ec2-user**
 
-  > **_NOTE:_** validate that credentials are exported after logging back in as **ec2-user** 
+  > **_NOTE:_** validate that credentials are exported in environment after logging back in as **ec2-user** 
+
   ````  
   env |grep AWS
   ````
-  
+  Output must list AWS_ environment variables and values that we exported.
+
+  Validate kubectl credentials and access works
+  ````
+  kubectl get svc
+  ````
+
   Validate docker works
   ````bash
   docker
@@ -100,7 +105,7 @@
   mkdir dockerimage && cd dockerimage
   ````
 
-* Create a Dockerfile -file
+* Create a Dockerfile for dummy app
   ````
   cat <<EoF > Dockerfile
   FROM ubuntu:focal
@@ -114,7 +119,7 @@
   ```` 
   docker build .
   ````
-* Verify Docker image was created. And note down image ID - you need it with ECR
+* Verify Docker image was created. And note down **IMAGE ID** - you need it with ECR
   ````
   docker images 
   ````
@@ -122,10 +127,10 @@
 
   ![docker](images/docker-build.png)
 
-> **_NOTE:_**  Write down IMAGE ID for image you created (above example 1da914777598) - you need it below
+> **_NOTE:_**  Write down **IMAGE ID** for image you created (above example 2590564f907e) - you need it below
 
-## 4. Upload Image to the ECR Repository
-Run below commands at Bastion host (where you created a docker image) 
+## 4. Create ECR Repository and Upload Image there
+Run below commands as ec2-user at Bastion host (where you created a docker image) 
 
 * Create an Elastic Container Repository (ECR) named my-image in us-west-2
    ````
@@ -136,7 +141,8 @@ Run below commands at Bastion host (where you created a docker image)
   ````bash 
   export REPOURI=$(aws ecr describe-repositories --query "repositories[].[repositoryUri]" --output text)
   ````
-  Validate that value matches URI above
+  Validate that value matches ECR URI
+  
   ````bash
   echo $REPOURI
   ````
@@ -176,7 +182,7 @@ Run below commands at Bastion host (where you created a docker image)
   kubectl get pod -A
   ````
 
-* Create below networkAttachmentDefinition (multus-ipvlan.yaml) and apply it to the cluster.
+* Create networkAttachmentDefinition (multus-ipvlan.yaml) with below command
 
 ````yaml
 cat <<EoF > multus-ipvlan.yaml
@@ -200,10 +206,10 @@ spec:
     }'
 EoF
 ````
-Apply configuration
-````
-kubectl apply -f multus-ipvlan.yaml
-````
+  Apply networkAttachmentDefinition configuration to K8s
+  ````
+  kubectl apply -f multus-ipvlan.yaml
+  ````
 
 * Deploy your docker using above network attachment. Create a file named, app-ipvlan.yaml
 
@@ -224,16 +230,18 @@ EoF
 ````
 > **_NOTE:_** Validate file has ECR image as "**image:**" value before applying configuration!
 
+Create Pod
 ````bash
 kubectl apply -f app-ipvlan.yaml
 ````
 
+Validate Pod creation
 ````bash
 kubectl describe pod samplepod
 ````
 * In case there are errors on image pull - take second look on steps above
 
-* Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24)
+* Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24) - open shell session
 
   ````
   kubectl exec -it samplepod -- /bin/bash
