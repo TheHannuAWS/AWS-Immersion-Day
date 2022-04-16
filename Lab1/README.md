@@ -99,7 +99,7 @@ Create S3 bucket to store Lambda function:<br>
    * Validate that you have "lambda_function.zip" file in your S3 bucket
  * Remember to write down bucket name (this is required to fill in CloudFormation)
 
-### Open CLoudFormation and deploy node group stack
+### Open CloudFormation and deploy node group stack
  * Go to CloudFormation console by selecting CloudFormation from Services drop down or by search menu
     * Select *Create stack*, *With new resources(standard)*
     * Click *Template is ready* (default), "Upload a template file", "Choose file". Select "**amazon-eks-nodegroup-multus.yaml**" file that you have downloaded from GitHub

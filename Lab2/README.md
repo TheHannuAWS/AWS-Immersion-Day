@@ -16,7 +16,7 @@
     ````
     
 ### Export Credentials
-* After you logg in to bastion host as **ec2-user** with Systems Manager export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN) 
+* After you log in to bastion host as **ec2-user** with Systems Manager export AWS credentials in console (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN) copy values for your environment in Event Engine page.
 
   > **_NOTE:_** Use VALUES you copied/stored earlier in Event Engine and export like *obfuscated* example below
 
