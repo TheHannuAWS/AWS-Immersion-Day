@@ -6,7 +6,7 @@
 
 ## 1. In this lab we use Bastion Host to build arm64 architecture dummy CNF
 
-* There are multiple methods (SSH, Instance Connect) to connect to the bastion host - in this lab we use AWS Systems Manager service
+* There are multiple methods (SSH - with ee-default-keypari.pem, Instance Connect) to connect to the bastion host - in this lab we will use AWS Systems Manager service
   * Open EC2 service -> Instances (running) -> Select Bastion Host -> "Connect" (right top corner of screen when selecting instance - see picture below) -> In "Session Manager"-tab press Connect to open shell connection. <br>
   ![ssm-connect](/Lab2/images/open-ssm.png)
 
@@ -26,9 +26,12 @@
 * Validate exported AWS credentials are in use
     
      ````
-     aws sts get-caller-identity
+     aws sts get-caller-identity --output text --query Arn
      ````
-  Make sure there is "**TeamRole**" visible in Arn if NOT re-check your export commands on above step
+  Example output:<br>
+  ![caller-identity](images/caller-identity.png)
+  
+  > **_NOTE:_** Make sure there is "**TeamRole/MasterKey**" assumed-role visible in **Arn** if NOT re-check your export commands on above step
   
   Store exports in .bash_profile so they are preserved on shell log outs:
   ````bash
@@ -80,7 +83,7 @@
   sudo usermod -aG docker ${USER}
   sudo service docker start
   ````
-  After above **Logout** from Bastion host and then back in as **ec2-user**
+  After above is executed **LOGOUT** from Bastion host and then log back in as **ec2-user** to set environment right
 
   > **_NOTE:_** validate that credentials are exported in environment after logging back in as **ec2-user** 
 
@@ -137,11 +140,11 @@ Run below commands as ec2-user at Bastion host (where you created a docker image
    aws ecr create-repository --repository-name my-image --region us-west-2
    ````
 
-  Store "reposotoryUri in variable for later use:
+  Store "reposotoryUri" in REPOURI variable for later use:
   ````bash 
   export REPOURI=$(aws ecr describe-repositories --query "repositories[].[repositoryUri]" --output text)
   ````
-  Validate that value matches ECR URI
+  Validate that REPOURI value matches ECR URI above
   
   ````bash
   echo $REPOURI
@@ -158,6 +161,11 @@ Run below commands as ec2-user at Bastion host (where you created a docker image
     ````
     docker tag <IMAGE ID> ${REPOURI}:latest
     ````
+* Validate tag was successful:
+    ````
+    docker images
+    ````
+
 *  Push Image to ECR:
     ````
     docker push ${REPOURI}:latest
@@ -239,7 +247,7 @@ Validate Pod creation
 ````bash
 kubectl describe pod samplepod
 ````
-* In case there are errors on image pull - take second look on steps above
+* In case there are errors on image pull - take second look on ECR/docker steps above
 
 * Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24) - open shell session
 
@@ -253,22 +261,132 @@ kubectl describe pod samplepod
   Example output:<br>
   ![samplepod](images/samplepod-ifconfig.png)
 
-### Extra: Automated Multus pod IP management on EKS / VPC
+## Publish samplepod IP to AWS VPC level (as a Secondary private IPv4 address) 
 
-> **_NOTE:_** Below needs update for arm64 (whereabouts) - build Docker image for this lab.
+Multus pod is using ipvlan CNI, which means that the MAC-address of the pod remains same as the master interface. In this case AWS VPC will **NOT** be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. 
 
-Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs routable in VPC network, please refer to Automated Multus pod IP management on EKS: https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods to automate the pod IP assignment seamlessly, without any change in application code.
+### Validate secondary IP is not visible on EC2 level 
+
+Go look Secondary private IPv4 addresses on EC2 console:
+
+* Open EC2 service -> Instances (running) -> Select EKS Worker Node (AWS-Infra-EKS...) -> Look "Networking" tab "Secondary private IPv4 addresses". See picture below.
+
+See picture: [EC2-no-secondary-IP](images/ec2-no-secondaryIP.png) for additional details
+
+### Update Multus pod IP on VPC/EC2 level
+
+> **_NOTE:_** To make samplepod IP routable and visible in VPC network perform following commands **root** in **samplepod** Pod (NOT on bastion host)
+
+Create Python script ipUpdate.py with following command in **samplepod** (not on bastion host):
+
+````python
+cat <<EoF > ipUpdate.py
+import requests
+import boto3, json
+import sys
+from requests.packages.urllib3 import Retry
+
+ec2_client = boto3.client('ec2', region_name='us-west-2')
+
+def assign_ip():
+    instance_id = get_instance_id()
+    subnet_cidr = "10.0.4.0/24"
+
+    response = ec2_client.describe_subnets(
+        Filters=[
+            {
+                'Name': 'cidr-block',
+                'Values': [
+                    subnet_cidr,
+                ]
+            },
+        ]
+    )
+
+    for i in response['Subnets']:
+        subnet_id = i['SubnetId']
+        break
+
+    response = ec2_client.describe_network_interfaces(
+        Filters=[
+            {
+                'Name': 'subnet-id',
+                'Values': [
+                    subnet_id,
+                ]
+            },
+            {
+                'Name': 'attachment.instance-id',
+                'Values': [
+                    instance_id,
+                ]
+            }
+        ]
+    )
+
+    for j in response['NetworkInterfaces']:
+        network_interface_id = j['NetworkInterfaceId']
+        break
+
+    response = ec2_client.assign_private_ip_addresses(
+        AllowReassignment=True,
+        NetworkInterfaceId=network_interface_id,
+        PrivateIpAddresses=[
+            "10.0.4.70",
+        ]
+    )
+
+def get_instance_id():
+    instance_identity_url = "http://169.254.169.254/latest/dynamic/instance-identity/document"
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=0.3)
+    metadata_adapter = requests.adapters.HTTPAdapter(max_retries=retries)
+    session.mount("http://169.254.169.254/", metadata_adapter)
+    try:
+        r = requests.get(instance_identity_url, timeout=(2, 5))
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as err:
+        print("Connection to AWS EC2 Metadata timed out: " + str(err.__class__.__name__))
+        print("Is this an EC2 instance? Is the AWS metadata endpoint blocked? (http://169.254.169.254/)")
+        sys.exit(1)
+    response_json = r.json()
+    instanceid = response_json.get("instanceId")
+    return(instanceid)
+
+assign_ip()
+EoF
+````
+> **_NOTE:_** This is hard coded sample that works for samplepod we build - not suitable as a generic reference
+
+Execute script (as root on samplepod):
+````bash
+python3 ipUpdate.py
+````
+
+### Validate that 10.0.4.70 is visible as secondary IP on EKS EC2 worker node
+
+* Open EC2 service -> Instances (running) -> Select EKS Worker Node (AWS-Infra-EKS...) -> Look "Networking" tab "Secondary private IPv4 addresses".
+
+See image for details: [EC2 secondary IP present](images/ec2-secondaryIP-visible.png) for additional details
+
+---
+
+**CONGRATULATIONS!** You have now successfully performed all exercises on this workshop!<br>
+
+---
 
 ## 5. What next? 
+
 * Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
+* Create Additional NetworkAttachmentDefinition and other samplepod (in different network) and try to enable ping between the hots (remember to publish secondary private IP's)
 * Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
-* Update some parameter in CFN - what happens ? How to add second worker node to EKS?
+* Update some parameter in CFN - what happens ? How to add second worker node to EKS ? How to change worker node size bigger ?
 * See official AWS Multus Guide: https://github.com/aws-samples/eks-install-guide-for-multus (Includes latest updates)
 * Look additional EKS labs in [eksworksop.com](https://www.eksworkshop.com/)
   * Especially: IAM/RBAC/IRSA related and how to work those with EKS
-* You can also walk through below blog post contents. You already have done the most of parts of setup process guided in the blog (Note that we used arm64 here) - in blog will build your own functional Open Source 4G EPC Core on EKS environment within 45 min following steps similar to this course. https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/
+* As discussed Multus pods are using ipvlan CNI, which means that the mac-address of the pod remains same as the master interface. In this case AWS VPC will not be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. To make these IPs automatically routable in VPC network, please refer to [**Automated Multus pod IP management on EKS**](https://github.com/aws-samples/eks-automated-ipmgmt-multus-pods) how to automate the pod IP assignment seamlessly, without any change in application code.
+* You can also walk through [this blog post contents](https://aws.amazon.com/blogs/opensource/open-source-mobile-core-network-implementation-on-amazon-elastic-kubernetes-service/). You already have done the most of parts of setup process guided in the blog (Note that we used arm64 here) - in blog will build your own functional Open Source 4G EPC Core on EKS environment within 45 min following steps similar to this course. 
 
-* Go Build your CNF apps with AWS!
+* **Go Build** your CNF apps with AWS!
 
 ## 6. Clean up labs
 1. Go to CloudFormation and "Delete" "eks-workers" stack you created 

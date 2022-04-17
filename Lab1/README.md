@@ -29,9 +29,15 @@
 
 ![Landing Zone configuration](images/immersion-day1.png)
 
-> **_NOTE:_** Building the infra (executing AWS CloudFormation) takes a while (~10mins) feel free to look around CFN stack and services created (EC2, VPC, EKS...). To see current status **refresh** the "Events" in CloudFormation console
+<br>  
 
-## 4. Open AWS CloudShell from AWS console - after AWS CloudFormation stack is created successfully
+---
+> **_NOTE:_** Building the infra (executing AWS CloudFormation) takes a while (~10mins): This is ready when Status becomes "**CREATE_COMPLETE**". Feel free to look around CFN stack and services created (EC2, VPC, EKS...). To see current status and **refresh** the "Events" in CloudFormation console to validate progress
+---
+
+<br>
+
+## 4. Open AWS CloudShell from AWS console - after AWS CloudFormation stack "Status" is  **CREATE_COMPLETE**
 
 Open AWS CloudShell from AWS console main page "CloudShell" icon:<br>
 ![CloudShellStart](images/cloud-shell.png) 
@@ -47,16 +53,15 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
 ````
 
+> **_NOTE:_** If you get prompt about "Safe Paste..." just select "Paste" (And select not to show again)
+
 Install kubectl (x86 version)
 ````bash
 curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
 chmod +x ./kubectl
-mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
-echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+mkdir -p $HOME/bin && mv ./kubectl $HOME/bin/kubectl
 kubectl version --short --client
 ````
-
-> **_NOTE:_** If you get prompt about "Safe Paste..." just select "Paste" (And select not to show again)
 
 * Verify name of your EKS cluster - and write it down
   *  Use AWS CLI to get EKS cluster name
@@ -108,29 +113,24 @@ Create S3 bucket to store Lambda function:<br>
     * Fill in following Parameters - **LEAVE OTHERS TO DEFAULTS**
       1. Stack name: **eks-workers** 
 
-      2. ClusterName: \<Name-of-YOUR-EKS-cluster\> from *AWS infra stack* - if you used recommended stack name this is **AWS-Infra-EKS** - validate from your environment
+      2. ClusterName: \<Name-of-YOUR-EKS-cluster\> from *AWS infra stack* - 
+        * If you used recommended stack name this is **AWS-Infra-EKS** - validate value from your environment <br>
       
       3. ClusterControlPlaneSecurityGroup: **AWS-Infra-EksControlSecurityGroup-xxxx**
       
-      4. NodeGroupName: **gv2-multus-ng1** (Default)
+      4. VpcId: **vpc-AWS-Infra** (Select one you created with AWS infra stack)
       
-      5. Min/Desired/MaxSize: **1/1/2** (Defaults - this deploys one worker node)
-      
-      6. KeyName: **ee-default-keypair** (Default - dropdown)
-         
-      7. VpcId: **vpc-AWS-Infra** (Select one you created with AWS infra stack)
-      
-      8. PrimarySubnets: **privateAz1-AWS-Infra** 
+      5. PrimarySubnets: **privateAz1-AWS-Infra** 
          * This is for primary K8s networking network - eth0 - choose just **one** from AZ1 
       
-      9. MultusSubnets: **multus1Az1-AWS-Infra** and **multus2Az1-AWS-Infra** 
+      6. MultusSubnets: **multus1Az1-AWS-Infra** and **multus2Az1-AWS-Infra** 
          * Choose **both** subnets from **AZ1**: **MultusSubnet1Az1** and **MultusSubnet2Az1**
       
-      10. MultusSecurityGroups: **multus-Sg-AWS-Infra** (Example: **AWS-Infra-MultusSecurityGroup-xxxxxx**)
+      7. MultusSecurityGroups: **multus-Sg-AWS-Infra** (Example: **AWS-Infra-MultusSecurityGroup-xxxxxx**)
       
-      11. LambdaS3Bucket: The one you created above. Just the name of bucket example: "\<your name\>-\<accountid\>-immersion"
+      8. LambdaS3Bucket: The one you created above. Just the name of bucket example: "\<your name\>-\<accountid\>-immersion"
       
-      12. LambdaS3Key: **lambda_function.zip** (name of zip file you uploaded to S3 - leave default)<br>
+      9. LambdaS3Key: **lambda_function.zip** (name of zip file you uploaded to S3 - leave default)<br>
       
     * Validate above changes and press "Next" in bottom of the page
 
@@ -142,32 +142,35 @@ Create S3 bucket to store Lambda function:<br>
 ![Console View](images/cfn-outputs-nodes.png)
 
 Example: **arn:aws:iam::455332889914:role/eks-workers-NodeInstanceRole-EXAMPLEuseYOURS** - use one from your output<br>
-* Execute following on CloudShell<br>
+
+### Edit aws-auth ConfigMap - to enable worker node access to cluster
+
+* Execute following commands on CloudShell<br>
   * Download aws-auth-cm.yaml file at CloudShell - and edit it there:
 
     ````bash
     curl -o aws-auth-cm.yaml https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
     ````
 
-* Edit **aws-auth-cm.yaml** file downloaded using vi/vim or other text editor you prefer. <br> 
+  * Edit **aws-auth-cm.yaml** file downloaded using vi/vim or other text editor you prefer. <br> 
 Place above copied **FULL *NodeInstanceRole* value** to the place of "*<ARN of instance role (not instance profile)>*" - next apply this through kubectl <br>
 
-* Example picture with *rolearn:* value updated
+  * Example picture with *rolearn:* value updated
 
-  ![rolearn](images/role-arn.png)
+    ![rolearn](images/role-arn.png)
 
-* Apply modifications after file is edited:
+  * Apply modifications after file is edited:
 
-  ````
-  kubectl apply -f aws-auth-cm.yaml
-  ````
-* Verify node group is created and visible under your cluster. Also check this in EKS Service in AWS console
-   ````
-   kubectl get nodes -o wide
-   ````
-* Example Output:
-  ![getsvc](images/kubect-get-svc.png)
+    ````
+    kubectl apply -f aws-auth-cm.yaml
+    ````
+  * Verify node group is created and visible under your cluster. Also check this in EKS Service in AWS console
+     ````
+     kubectl get nodes -o wide
+     ````
+  * Example Output:
+    ![getsvc](images/kubect-get-svc.png)
 
-   Nodes should be visible as STATUS "**Ready**" within ~minute.
+     Nodes should be visible as STATUS "**Ready**" within ~minute.
 
-If all looks good (kubectl get nodes command shows "Ready" worker node instance, networks are as configured) - proceed to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)
+If all looks good (kubectl get nodes command shows "Ready" worker node instance, networks are as configured) - you are ready to proceed to [Lab2](https://github.com/TheHannuAWS/AWS-Immersion-Day/tree/main/Lab2)
