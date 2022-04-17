@@ -247,14 +247,14 @@ Validate Pod creation
 ````bash
 kubectl describe pod samplepod
 ````
-* In case there are errors on image pull - take second look on ECR/docker steps above
+> **_NOTE:_**  In case there are errors on image pull - take second look on ECR/docker steps above
 
-* Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24) - open shell session
+Verify your Pod has 2 interfaces (eth0 for default K8s networking and net1 for Multus interface (10.0.4.0/24) - open shell session
 
   ````
   kubectl exec -it samplepod -- /bin/bash
   ````  
-* Run ifconfig in *samplepod* as root (not on bastion host) to validate you see two interfaces:<br>
+Run ifconfig in *samplepod* as root (not on bastion host) to validate you see two interfaces:<br>
   ````
   ifconfig
   ````
@@ -265,13 +265,13 @@ kubectl describe pod samplepod
 
 Multus pod is using ipvlan CNI, which means that the MAC-address of the pod remains same as the master interface. In this case AWS VPC will **NOT** be aware of the assumed IP address of the pod, since the IP allocations to these pods hasn’t happened via VPC. VPC is only aware of the IP addresses allocated on the ENI on EC2 worker nodes. 
 
-### Validate secondary IP is not visible on EC2 level 
+### Validate secondary IP is not yet visible on EC2 level 
 
-Go look Secondary private IPv4 addresses on EC2 console:
+Look Secondary private IPv4 addresses on EC2 console:
 
 * Open EC2 service -> Instances (running) -> Select EKS Worker Node (AWS-Infra-EKS...) -> Look "Networking" tab "Secondary private IPv4 addresses". See picture below.
 
-See picture: [EC2-no-secondary-IP](images/ec2-no-secondaryIP.png) for additional details
+See [EC2 no secondary IP](images/ec2-no-secondaryIP.png) image for additional details
 
 ### Update Multus pod IP on VPC/EC2 level
 
@@ -362,11 +362,11 @@ Execute script (as root on samplepod):
 python3 ipUpdate.py
 ````
 
-### Validate that 10.0.4.70 is visible as secondary IP on EKS EC2 worker node
+### Validate that secondary IP is visible on EKS EC2 worker node
 
 * Open EC2 service -> Instances (running) -> Select EKS Worker Node (AWS-Infra-EKS...) -> Look "Networking" tab "Secondary private IPv4 addresses".
 
-See image for details: [EC2 secondary IP present](images/ec2-secondaryIP-visible.png) for additional details
+See [EC2 secondary IP present](images/ec2-secondaryIP-visible.png) image for additional details
 
 ---
 
@@ -377,9 +377,9 @@ See image for details: [EC2 secondary IP present](images/ec2-secondaryIP-visible
 ## 5. What next? 
 
 * Look around in the environment - EKS, EC2, Lambda, EventBridge - how things relate ?
-* Create Additional NetworkAttachmentDefinition and other samplepod (in different network) and try to enable ping between the hots (remember to publish secondary private IP's)
-* Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
+* Create Additional Multus NetworkAttachmentDefinition and other samplepod (in 10.0.6.0/24 network) and try to enable ping between the Pod's (Tip: remember to publish secondary private IP's)
 * Update some parameter in CFN - what happens ? How to add second worker node to EKS ? How to change worker node size bigger ?
+* Validate alternate connectivity methods - example tunnel SSH session through Session Manager [SSH-SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
 * See official AWS Multus Guide: https://github.com/aws-samples/eks-install-guide-for-multus (Includes latest updates)
 * Look additional EKS labs in [eksworksop.com](https://www.eksworkshop.com/)
   * Especially: IAM/RBAC/IRSA related and how to work those with EKS
